@@ -2,9 +2,22 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
+    <!-- 카메라 접근 권한 설명 (영어로 변경) -->
+    <key>NSCameraUsageDescription</key>
+    <string>This app requires access to the camera to capture book covers.</string>
+
+    <!-- 백그라운드 모드 -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+    </array>
+
+    <!-- 캘린더 접근 권한 설명 -->
+    <key>NSCalendarsUsageDescription</key>
+    <string>This app needs access to your calendar to save reading sessions.</string>
+
+    <!-- 앱 암호화 관련 설정 -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>

@@ -12,7 +12,9 @@ import SwiftData
 struct FocusReaderApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Book.self,
+            ReadingSession.self,
+            PageMemo.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -30,3 +32,4 @@ struct FocusReaderApp: App {
         .modelContainer(sharedModelContainer)
     }
 }
+
