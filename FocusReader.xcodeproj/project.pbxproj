@@ -6,11 +6,42 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		86B54B082EEBDFFE00C5CE97 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86B54A1D2EE9624700C5CE97 /* WidgetKit.framework */; };
+		86B54B092EEBDFFE00C5CE97 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86B54A1F2EE9624800C5CE97 /* SwiftUI.framework */; };
+		86B54B1A2EEBE00000C5CE97 /* FocusReaderWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 86B54B072EEBDFFE00C5CE97 /* FocusReaderWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		86B54B182EEBE00000C5CE97 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8624607A2EE9300800C67BD2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 86B54B062EEBDFFE00C5CE97;
+			remoteInfo = FocusReaderWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		86B54AF92EEBDDE400C5CE97 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				86B54B1A2EEBE00000C5CE97 /* FocusReaderWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		862460822EE9300800C67BD2 /* FocusReader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		862461752EE940BB00C67BD2 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/StoreKit.framework; sourceTree = DEVELOPER_DIR; };
 		86B54A1D2EE9624700C5CE97 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		86B54A1F2EE9624800C5CE97 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		86B54B072EEBDFFE00C5CE97 /* FocusReaderWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusReaderWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -21,6 +52,20 @@
 			);
 			target = 862460812EE9300800C67BD2 /* FocusReader */;
 		};
+		86B54B1E2EEBE00000C5CE97 /* Exceptions for "FocusReaderWidget" folder in "FocusReaderWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 86B54B062EEBDFFE00C5CE97 /* FocusReaderWidgetExtension */;
+		};
+		86B54B232EEBE0C700C5CE97 /* Exceptions for "FocusReader" folder in "FocusReaderWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/ReadingTimerAttributes.swift,
+			);
+			target = 86B54B062EEBDFFE00C5CE97 /* FocusReaderWidgetExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -28,8 +73,17 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				8624608F2EE9300A00C67BD2 /* Exceptions for "FocusReader" folder in "FocusReader" target */,
+				86B54B232EEBE0C700C5CE97 /* Exceptions for "FocusReader" folder in "FocusReaderWidgetExtension" target */,
 			);
 			path = FocusReader;
+			sourceTree = "<group>";
+		};
+		86B54B0A2EEBDFFE00C5CE97 /* FocusReaderWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				86B54B1E2EEBE00000C5CE97 /* Exceptions for "FocusReaderWidget" folder in "FocusReaderWidgetExtension" target */,
+			);
+			path = FocusReaderWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -42,6 +96,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		86B54B042EEBDFFE00C5CE97 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				86B54B092EEBDFFE00C5CE97 /* SwiftUI.framework in Frameworks */,
+				86B54B082EEBDFFE00C5CE97 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -49,6 +112,7 @@
 			isa = PBXGroup;
 			children = (
 				862460842EE9300800C67BD2 /* FocusReader */,
+				86B54B0A2EEBDFFE00C5CE97 /* FocusReaderWidget */,
 				862461742EE940BB00C67BD2 /* Frameworks */,
 				862460832EE9300800C67BD2 /* Products */,
 			);
@@ -58,6 +122,7 @@
 			isa = PBXGroup;
 			children = (
 				862460822EE9300800C67BD2 /* FocusReader.app */,
+				86B54B072EEBDFFE00C5CE97 /* FocusReaderWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -82,10 +147,12 @@
 				8624607E2EE9300800C67BD2 /* Sources */,
 				8624607F2EE9300800C67BD2 /* Frameworks */,
 				862460802EE9300800C67BD2 /* Resources */,
+				86B54AF92EEBDDE400C5CE97 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				86B54B192EEBE00000C5CE97 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				862460842EE9300800C67BD2 /* FocusReader */,
@@ -96,6 +163,28 @@
 			productName = FocusReader;
 			productReference = 862460822EE9300800C67BD2 /* FocusReader.app */;
 			productType = "com.apple.product-type.application";
+		};
+		86B54B062EEBDFFE00C5CE97 /* FocusReaderWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 86B54B1B2EEBE00000C5CE97 /* Build configuration list for PBXNativeTarget "FocusReaderWidgetExtension" */;
+			buildPhases = (
+				86B54B032EEBDFFE00C5CE97 /* Sources */,
+				86B54B042EEBDFFE00C5CE97 /* Frameworks */,
+				86B54B052EEBDFFE00C5CE97 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				86B54B0A2EEBDFFE00C5CE97 /* FocusReaderWidget */,
+			);
+			name = FocusReaderWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = FocusReaderWidgetExtension;
+			productReference = 86B54B072EEBDFFE00C5CE97 /* FocusReaderWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -108,6 +197,9 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					862460812EE9300800C67BD2 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					86B54B062EEBDFFE00C5CE97 = {
 						CreatedOnToolsVersion = 26.0;
 					};
 				};
@@ -129,12 +221,20 @@
 			projectRoot = "";
 			targets = (
 				862460812EE9300800C67BD2 /* FocusReader */,
+				86B54B062EEBDFFE00C5CE97 /* FocusReaderWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		862460802EE9300800C67BD2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86B54B052EEBDFFE00C5CE97 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -151,7 +251,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		86B54B032EEBDFFE00C5CE97 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		86B54B192EEBE00000C5CE97 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 86B54B062EEBDFFE00C5CE97 /* FocusReaderWidgetExtension */;
+			targetProxy = 86B54B182EEBE00000C5CE97 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		862460912EE9300A00C67BD2 /* Debug */ = {
@@ -159,6 +274,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FocusReader/FocusReader.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = DUBPMF36TD;
@@ -210,6 +326,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FocusReader/FocusReader.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = DUBPMF36TD;
@@ -372,6 +489,79 @@
 			};
 			name = Release;
 		};
+		86B54B1C2EEBE00000C5CE97 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DUBPMF36TD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FocusReaderWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FocusReaderWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Jaemin.FocusReader.FocusReaderWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		86B54B1D2EEBE00000C5CE97 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DUBPMF36TD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FocusReaderWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FocusReaderWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Jaemin.FocusReader.FocusReaderWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -389,6 +579,15 @@
 			buildConfigurations = (
 				862460912EE9300A00C67BD2 /* Debug */,
 				862460922EE9300A00C67BD2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		86B54B1B2EEBE00000C5CE97 /* Build configuration list for PBXNativeTarget "FocusReaderWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				86B54B1C2EEBE00000C5CE97 /* Debug */,
+				86B54B1D2EEBE00000C5CE97 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

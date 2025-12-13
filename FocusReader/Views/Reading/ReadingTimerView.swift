@@ -1,12 +1,7 @@
-//
-//  ReadingTimerView.swift
-//  FocusReader
-//
-//  Created by JeaminPark on 12/10/25.
-//
-
 import SwiftUI
 import SwiftData
+import AVFoundation
+import ActivityKit
 
 struct ReadingTimerView: View {
     @Environment(\.modelContext) private var modelContext
@@ -21,11 +16,19 @@ struct ReadingTimerView: View {
     @State private var currentSession: ReadingSession?
     @State private var showEndPageInput: Bool = false
     
+    @State private var targetMinutes: Int = 30
+    @State private var showTimerPicker: Bool = false
+    @State private var isTimerMode: Bool = false
+    @State private var audioPlayer: AVAudioPlayer?
+    @State private var showTimerAlert: Bool = false
+    
+    @State private var activity: Activity<ReadingTimerAttributes>?
+    @State private var actionCheckTimer: Timer?
+    
     var body: some View {
         VStack {
             Spacer()
             
-            // 책 정보 (일러스트)
             VStack(spacing: 10) {
                 if let imagePath = book.imagePath,
                    let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
@@ -48,18 +51,23 @@ struct ReadingTimerView: View {
                     .foregroundColor(.secondary)
             }
             
-            // 타이머 표시 (중앙)
             VStack(spacing: 20) {
-                Text(formatTime(elapsedTime))
-                    .font(.system(size: 60, weight: .bold, design: .monospaced))
-                    .foregroundColor(.primary)
+                if isTimerMode {
+                    let remaining = max(0, TimeInterval(targetMinutes * 60) - elapsedTime)
+                    Text(formatTime(remaining))
+                        .font(.system(size: 60, weight: .bold, design: .monospaced))
+                        .foregroundColor(remaining < 60 ? .red : .primary)
+                } else {
+                    Text(formatTime(elapsedTime))
+                        .font(.system(size: 60, weight: .bold, design: .monospaced))
+                        .foregroundColor(.primary)
+                }
                 
                 Text("Current Page: \(book.currentPage) / \(book.totalPages)")
                     .font(.headline)
             }
             .padding(.vertical, 40)
             
-            // 컨트롤 버튼
             HStack(spacing: 20) {
                 Button(action: toggleTimer) {
                     Label(isRunning ? "Pause" : "Start",
@@ -91,6 +99,14 @@ struct ReadingTimerView: View {
         .padding()
         .navigationTitle("Reading Timer")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showTimerPicker = true }) {
+                    Image(systemName: "timer")
+                        .font(.title3)
+                }
+            }
+        }
         .sheet(isPresented: $showEndPageInput) {
             EndPageInputView(
                 book: book,
@@ -100,17 +116,52 @@ struct ReadingTimerView: View {
                 }
             )
         }
+        .sheet(isPresented: $showTimerPicker) {
+            TimerPickerView(minutes: $targetMinutes, isTimerMode: $isTimerMode)
+                .presentationDetents([.large])
+        }
+        .alert("Timer Complete!", isPresented: $showTimerAlert) {
+            Button("OK") {
+                stopTimer()
+            }
+        } message: {
+            Text("You've reached your reading goal of \(targetMinutes) minutes!")
+        }
+        .onAppear {
+            endAllLiveActivities()
+            setupNotifications()
+        }
         .onDisappear {
             timer?.invalidate()
+            actionCheckTimer?.invalidate()
+            audioPlayer?.stop()
+            endLiveActivity()
+            NotificationCenter.default.removeObserver(self)
+        }
+    }
+    
+    private func setupNotifications() {
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ToggleTimer"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            self.toggleTimer()
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("StopTimer"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            self.stopTimer()
         }
     }
     
     private func toggleTimer() {
         if isRunning {
-            // Pause
             pauseTimer()
         } else {
-            // Start or Resume
             if currentSession == nil {
                 startTimer()
             } else {
@@ -119,8 +170,11 @@ struct ReadingTimerView: View {
         }
     }
     
+    // MARK: - Timer Controls
+    
     private func startTimer() {
-        // 새 세션 생성
+        endLiveActivity()
+        
         let now = Date()
         let session = ReadingSession(
             startTime: now,
@@ -129,7 +183,6 @@ struct ReadingTimerView: View {
         )
         modelContext.insert(session)
         
-        // Book의 sessions에 추가
         if book.sessions == nil {
             book.sessions = []
         }
@@ -141,39 +194,125 @@ struct ReadingTimerView: View {
         elapsedTime = 0
         
         isRunning = true
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            elapsedTime = Date().timeIntervalSince(sessionStartTime)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.startLiveActivity()
         }
+        
+        startUITimer()
     }
     
     private func resumeTimer() {
-        // 재개: 일시정지된 시간부터 계속
-        sessionStartTime = Date() - pausedElapsedTime
-        
+        sessionStartTime = Date()
         isRunning = true
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            elapsedTime = Date().timeIntervalSince(sessionStartTime)
-        }
+        startUITimer()
     }
     
     private func pauseTimer() {
         isRunning = false
-        pausedElapsedTime = elapsedTime
+        pausedElapsedTime += Date().timeIntervalSince(sessionStartTime)
         timer?.invalidate()
+        updateLiveActivity()
     }
     
     private func stopTimer() {
         isRunning = false
         timer?.invalidate()
+        audioPlayer?.stop()
         
-        // 현재까지의 경과 시간을 저장
         if let session = currentSession {
-            // 세션의 실제 시작 시간을 기준으로 경과 시간 계산
-            let actualElapsed = Date().timeIntervalSince(session.startTime)
-            session.duration = actualElapsed
+            session.duration = pausedElapsedTime + Date().timeIntervalSince(sessionStartTime)
         }
         
-        showEndPageInput = true
+        endLiveActivity()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.showEndPageInput = true
+        }
+    }
+    
+    private func startUITimer() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            elapsedTime = pausedElapsedTime + Date().timeIntervalSince(sessionStartTime)
+            updateLiveActivity()
+            
+            if isTimerMode && elapsedTime >= TimeInterval(targetMinutes * 60) {
+                playAlarm()
+                showTimerAlert = true
+                pauseTimer()
+            }
+        }
+    }
+    
+    // MARK: - Live Activity
+    
+    private func startLiveActivity() {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        
+        let attributes = ReadingTimerAttributes(
+            bookTitle: book.title,
+            bookImagePath: book.imagePath,
+            startTime: sessionStartTime
+        )
+        
+        let contentState = ReadingTimerAttributes.ContentState(
+            elapsedTime: elapsedTime,
+            isRunning: isRunning,
+            isTimerMode: isTimerMode,
+            targetMinutes: targetMinutes
+        )
+        
+        do {
+            activity = try Activity.request(
+                attributes: attributes,
+                content: .init(state: contentState, staleDate: nil)
+            )
+        } catch {
+            print("Error starting Live Activity: \(error)")
+        }
+    }
+    
+    private func updateLiveActivity() {
+        guard let activity = activity else { return }
+        
+        let contentState = ReadingTimerAttributes.ContentState(
+            elapsedTime: elapsedTime,
+            isRunning: isRunning,
+            isTimerMode: isTimerMode,
+            targetMinutes: targetMinutes
+        )
+        
+        Task {
+            await activity.update(using: contentState)
+        }
+    }
+    
+    private func endLiveActivity() {
+        guard let activity = activity else { return }
+        
+        Task {
+            await activity.end(using: nil, dismissalPolicy: .immediate)
+        }
+        self.activity = nil
+    }
+    
+    private func endAllLiveActivities() {
+        Task {
+            for activity in Activity<ReadingTimerAttributes>.activities {
+                await activity.end(using: nil, dismissalPolicy: .immediate)
+            }
+        }
+        self.activity = nil
+    }
+    
+    // MARK: - Live Activity Action Monitoring
+    
+   
+    
+    private func playAlarm() {
+        AudioServicesPlaySystemSound(1005)
+        AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
     }
     
     private func formatTime(_ time: TimeInterval) -> String {
@@ -181,5 +320,98 @@ struct ReadingTimerView: View {
         let minutes = Int(time) / 60 % 60
         let seconds = Int(time) % 60
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+}
+
+// TimerPickerView는 기존 그대로 사용 가능
+
+
+// 타이머 설정 뷰
+struct TimerPickerView: View {
+    @Binding var minutes: Int
+    @Binding var isTimerMode: Bool
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedMinutes: Int
+    
+    init(minutes: Binding<Int>, isTimerMode: Binding<Bool>) {
+        self._minutes = minutes
+        self._isTimerMode = isTimerMode
+        self._selectedMinutes = State(initialValue: minutes.wrappedValue)
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    Spacer()
+                    
+                    VStack(spacing: 12) {
+                        Image(systemName: "timer")
+                            .font(.system(size: 60))
+                            .foregroundColor(.blue)
+                        
+                        Text("Set Reading Timer")
+                            .font(.system(size: 32, weight: .bold))
+                        
+                        Text("Choose how long you want to read")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.bottom, 50)
+                    
+                    Picker("Minutes", selection: $selectedMinutes) {
+                        ForEach([5, 10, 15, 20, 25, 30, 45, 60, 90, 120], id: \.self) { min in
+                            Text("\(min)").tag(min)
+                                .font(.system(size: 24, weight: .semibold))
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 180)
+                    .padding(.horizontal, 40)
+                    
+                    Text("minutes")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 8)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        minutes = selectedMinutes
+                        isTimerMode = true
+                        dismiss()
+                    }) {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title3)
+                            Text("Start Timer")
+                                .font(.headline)
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(Color.blue)
+                        .cornerRadius(14)
+                    }
+                    .padding(.horizontal, 30)
+                    .padding(.bottom, 40)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                            .foregroundColor(.gray)
+                    }
+                }
+            }
+        }
     }
 }
