@@ -6,8 +6,9 @@ import ActivityKit
 struct ReadingTimerView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
+
     let book: Book
+
     @State private var sessionStartTime: Date = Date()
     @State private var pausedElapsedTime: TimeInterval = 0
     @State private var elapsedTime: TimeInterval = 0
@@ -15,45 +16,47 @@ struct ReadingTimerView: View {
     @State private var isRunning: Bool = false
     @State private var currentSession: ReadingSession?
     @State private var showEndPageInput: Bool = false
-    
-    // Date 기반 추가
-    @State private var timerStartDate: Date?
-    @State private var timerEndDate: Date?
-    
+
+    // ⏱ Timer mode
     @State private var targetMinutes: Int = 30
-    @State private var showTimerPicker: Bool = false
     @State private var isTimerMode: Bool = false
-    @State private var audioPlayer: AVAudioPlayer?
+    @State private var timerEndDate: Date?
+
+    // UI
+    @State private var showTimerPicker: Bool = false
     @State private var showTimerAlert: Bool = false
-    
+
+    // Audio / Live Activity
+    @State private var audioPlayer: AVAudioPlayer?
     @State private var activity: Activity<ReadingTimerAttributes>?
-    
+
+    // MARK: - UI
     var body: some View {
         VStack {
             Spacer()
-            
+
             VStack(spacing: 10) {
                 if let imagePath = book.imagePath,
-                   let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-                    let imageURL = documentsDirectory.appendingPathComponent(imagePath)
-                    if let imageData = try? Data(contentsOf: imageURL),
-                       let uiImage = UIImage(data: imageData) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 150)
-                            .cornerRadius(10)
-                    }
+                   let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first,
+                   let data = try? Data(contentsOf: documents.appendingPathComponent(imagePath)),
+                   let uiImage = UIImage(data: data) {
+
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 150)
+                        .cornerRadius(10)
                 }
-                
+
                 Text(book.title)
                     .font(.title2)
                     .fontWeight(.bold)
+
                 Text(book.author)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
-            
+
             VStack(spacing: 20) {
                 if isTimerMode {
                     let remaining = max(0, TimeInterval(targetMinutes * 60) - elapsedTime)
@@ -63,30 +66,26 @@ struct ReadingTimerView: View {
                 } else {
                     Text(formatTime(elapsedTime))
                         .font(.system(size: 60, weight: .bold, design: .monospaced))
-                        .foregroundColor(.primary)
                 }
-                
+
                 Text("Current Page: \(book.currentPage) / \(book.totalPages)")
                     .font(.headline)
             }
             .padding(.vertical, 40)
-            
+
             HStack(spacing: 20) {
                 Button(action: toggleTimer) {
                     Label(isRunning ? "Pause" : "Start",
                           systemImage: isRunning ? "pause.fill" : "play.fill")
-                        .font(.headline)
                         .foregroundColor(.white)
                         .padding(.horizontal, 40)
                         .padding(.vertical, 14)
                         .background(isRunning ? Color.orange : Color.green)
                         .cornerRadius(10)
                 }
-                .disabled(isTimerMode && elapsedTime >= TimeInterval(targetMinutes * 60))
-                
+
                 Button(action: stopTimer) {
                     Label("Stop", systemImage: "stop.fill")
-                        .font(.headline)
                         .foregroundColor(.white)
                         .padding(.horizontal, 40)
                         .padding(.vertical, 14)
@@ -96,8 +95,7 @@ struct ReadingTimerView: View {
                 .disabled(!isRunning && currentSession == nil)
                 .opacity((!isRunning && currentSession == nil) ? 0.5 : 1)
             }
-            .padding(.top, 20)
-            
+
             Spacer()
         }
         .padding()
@@ -105,424 +103,238 @@ struct ReadingTimerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showTimerPicker = true }) {
+                Button { showTimerPicker = true } label: {
                     Image(systemName: "timer")
-                        .font(.title3)
                 }
             }
         }
         .sheet(isPresented: $showEndPageInput) {
-            EndPageInputView(
-                book: book,
-                session: currentSession,
-                onComplete: {
-                    dismiss()
-                }
-            )
+            EndPageInputView(book: book, session: currentSession) {
+                dismiss()
+            }
         }
         .sheet(isPresented: $showTimerPicker) {
             TimerPickerView(minutes: $targetMinutes, isTimerMode: $isTimerMode)
-                .presentationDetents([.large])
         }
         .alert("Timer Complete!", isPresented: $showTimerAlert) {
-            Button("Save Reading") {
-                showEndPageInput = true
-            }
-            Button("Cancel", role: .cancel) {
-                resetAfterCompletion()
-            }
-        } message: {
-            Text("You've reached your reading goal of \(targetMinutes) minutes!")
+            Button("Save Reading") { showEndPageInput = true }
+            Button("Cancel", role: .cancel) { resetAfterCompletion() }
         }
         .onAppear {
             endAllLiveActivities()
-            setupNotifications()
-            setupBackgroundTask()
             checkTimerCompletionOnAppear()
         }
         .onDisappear {
             timer?.invalidate()
             audioPlayer?.stop()
             endLiveActivity()
-            NotificationCenter.default.removeObserver(self)
         }
     }
-    
-    private func setupNotifications() {
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("ToggleTimer"),
-            object: nil,
-            queue: .main
-        ) { _ in
-            self.toggleTimer()
-        }
-        
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("StopTimer"),
-            object: nil,
-            queue: .main
-        ) { _ in
-            self.stopTimer()
-        }
-        
-        NotificationCenter.default.addObserver(
-            forName: UIApplication.willResignActiveNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            self.scheduleBackgroundTask()
-        }
-        
-        NotificationCenter.default.addObserver(
-            forName: UIApplication.didBecomeActiveNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            self.checkTimerCompletionOnAppear()
-        }
-    }
-    
-    private func setupBackgroundTask() {
-        guard isTimerMode, let endDate = timerEndDate else { return }
-        
-        let remaining = endDate.timeIntervalSinceNow
-        if remaining > 0 {
-            scheduleTimerCompletionNotification(in: remaining)
-        }
-    }
-    
-    private func scheduleBackgroundTask() {
-        guard isTimerMode, let endDate = timerEndDate, isRunning else { return }
-        
-        let remaining = endDate.timeIntervalSinceNow
-        if remaining > 0 {
-            print("📱 Scheduling background task for \(remaining) seconds")
-            scheduleTimerCompletionNotification(in: remaining)
-        }
-    }
-    
-    private func scheduleTimerCompletionNotification(in timeInterval: TimeInterval) {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["timerCompletion"])
-        
-        let content = UNMutableNotificationContent()
-        content.title = "Reading Timer Complete!"
-        content.body = "You've reached your reading goal of \(targetMinutes) minutes!"
-        content.sound = .default
-        
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: false)
-        let request = UNNotificationRequest(identifier: "timerCompletion", content: content, trigger: trigger)
-        
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("❌ Error scheduling notification: \(error)")
-            } else {
-                print("✅ Timer completion notification scheduled")
-            }
-        }
-    }
-    
+
+    // MARK: - Timer Control
+
     private func toggleTimer() {
-        if isRunning {
-            pauseTimer()
-        } else {
-            if currentSession == nil {
-                startTimer()
-            } else {
-                resumeTimer()
-            }
-        }
+        isRunning ? pauseTimer() : (currentSession == nil ? startTimer() : resumeTimer())
     }
-    
-    // MARK: - Timer Controls
-    
+
     private func startTimer() {
-        endLiveActivity()
-        
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-            if granted {
-                print("✅ Notification permission granted")
-            }
-        }
-        
         let now = Date()
+
         let session = ReadingSession(
             startTime: now,
             startPage: book.currentPage,
             book: book
         )
         modelContext.insert(session)
-        
-        if book.sessions == nil {
-            book.sessions = []
-        }
         book.sessions?.append(session)
-        
+
         currentSession = session
         sessionStartTime = now
         pausedElapsedTime = 0
         elapsedTime = 0
-        
-        timerStartDate = now
-        
+        isRunning = true
+
         if isTimerMode {
             timerEndDate = now.addingTimeInterval(TimeInterval(targetMinutes * 60))
             scheduleTimerCompletionNotification(in: TimeInterval(targetMinutes * 60))
-        } else {
-            timerEndDate = nil
         }
-        
-        isRunning = true
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            self.startLiveActivity()
-        }
-        
+
+        startLiveActivity()
         startUITimer()
     }
-    
+
     private func resumeTimer() {
         sessionStartTime = Date()
-        timerStartDate = Date()
-        
+        isRunning = true
+
         if isTimerMode {
             let remaining = max(0, TimeInterval(targetMinutes * 60) - pausedElapsedTime)
             timerEndDate = Date().addingTimeInterval(remaining)
             scheduleTimerCompletionNotification(in: remaining)
         }
-        
-        isRunning = true
+
+        startLiveActivity()
         startUITimer()
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.updateLiveActivity()
-        }
     }
-    
+
     private func pauseTimer() {
-        isRunning = false
         pausedElapsedTime += Date().timeIntervalSince(sessionStartTime)
-        timerStartDate = nil
-        timer?.invalidate()
-        
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["timerCompletion"])
-        
-        updateLiveActivity()
-    }
-    
-    private func stopTimer() {
         isRunning = false
         timer?.invalidate()
-        audioPlayer?.stop()
-        
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["timerCompletion"])
-        
-        if let session = currentSession {
-            session.duration = pausedElapsedTime + (isRunning ? Date().timeIntervalSince(sessionStartTime) : 0)
-        }
-        
+
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: ["timerCompletion"])
+
         endLiveActivity()
-        
-        timerStartDate = nil
-        timerEndDate = nil
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            self.showEndPageInput = true
-        }
     }
-    
+
+    private func stopTimer() {
+        let finalElapsed = pausedElapsedTime +
+            (isRunning ? Date().timeIntervalSince(sessionStartTime) : 0)
+
+        isRunning = false
+        timer?.invalidate()
+
+        if let session = currentSession {
+            session.duration = finalElapsed
+        }
+
+        endLiveActivity()
+        showEndPageInput = true
+    }
+
     private func startUITimer() {
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             elapsedTime = pausedElapsedTime + Date().timeIntervalSince(sessionStartTime)
-            
-            if isTimerMode {
-                let remaining = TimeInterval(targetMinutes * 60) - elapsedTime
-                
-                // 타이머 완료 - 자동 종료
-                if remaining <= 0 {
-                    handleTimerCompletion()
-                }
-            }
-            
-            // 백그라운드에서 타이머가 완료되었는지 체크
-            if isTimerMode, let endDate = timerEndDate, Date() >= endDate, isRunning {
+
+            if isTimerMode, let end = timerEndDate, Date() >= end {
                 handleTimerCompletion()
             }
         }
     }
-    
-    // MARK: - Timer Completion Handler
-    
+
+    // MARK: - Completion
+
     private func handleTimerCompletion() {
-        // 백그라운드 알림 취소
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["timerCompletion"])
-        
-        // 알람 재생
-        playAlarm()
-        
-        // 타이머 완전 종료
         timer?.invalidate()
         isRunning = false
+
         pausedElapsedTime = TimeInterval(targetMinutes * 60)
-        elapsedTime = TimeInterval(targetMinutes * 60)
-        
-        // 세션 저장
+        elapsedTime = pausedElapsedTime
+
         if let session = currentSession {
-            session.duration = TimeInterval(targetMinutes * 60)
+            session.duration = pausedElapsedTime
         }
-        
-        // Live Activity 즉시 종료
+
         endLiveActivity()
-        
-        // 상태 초기화
-        timerStartDate = nil
-        timerEndDate = nil
-        
-        // 알림 표시
+        playAlarm()
         showTimerAlert = true
     }
-    
+
     private func resetAfterCompletion() {
         currentSession = nil
         pausedElapsedTime = 0
         elapsedTime = 0
     }
-    
+
     // MARK: - Live Activity
-    
+
     private func startLiveActivity() {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            print("Live Activities not enabled")
-            return
-        }
-        
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
+        // ⭐ 핵심 수정
+        let activityStartDate = Date().addingTimeInterval(-pausedElapsedTime)
+
         let attributes = ReadingTimerAttributes(
             bookTitle: book.title,
             bookImagePath: book.imagePath,
             sessionStartTime: sessionStartTime
         )
-        
+
         let contentState = ReadingTimerAttributes.ContentState(
-            timerStartDate: timerStartDate,
+            timerStartDate: activityStartDate,   // ⭕ 누적 반영
             pausedTime: pausedElapsedTime,
-            isRunning: isRunning,
+            isRunning: true,
             isTimerMode: isTimerMode,
             targetMinutes: targetMinutes,
-            timerEndDate: timerEndDate
+            timerEndDate: isTimerMode
+                ? activityStartDate.addingTimeInterval(TimeInterval(targetMinutes * 60))
+                : nil
         )
-        
+
         do {
-            let content = ActivityContent(
-                state: contentState,
-                staleDate: nil
-            )
-            
+            let content = ActivityContent(state: contentState, staleDate: nil)
             activity = try Activity.request(
                 attributes: attributes,
                 content: content,
                 pushType: nil
             )
-            
-            print("✅ Live Activity started (Date-based)")
+            print("✅ Live Activity started (elapsed preserved)")
         } catch {
-            print("❌ Error starting Live Activity: \(error.localizedDescription)")
+            print("❌ Live Activity error: \(error)")
         }
     }
-    
-    private func updateLiveActivity() {
-        guard let activity = activity else { return }
-        
-        let timerEnd = isTimerMode ? Date().addingTimeInterval(max(0, TimeInterval(targetMinutes * 60) - elapsedTime)) : nil
-        
-        let contentState = ReadingTimerAttributes.ContentState(
-            timerStartDate: timerStartDate,
-            pausedTime: isRunning ? 0 : pausedElapsedTime,
-            isRunning: isRunning,
-            isTimerMode: isTimerMode,
-            targetMinutes: targetMinutes,
-            timerEndDate: timerEnd
-        )
-        
-        let content = ActivityContent(
-            state: contentState,
-            staleDate: nil
-        )
-        
-        Task { @MainActor in
-            await activity.update(content)
-            print("🔄 Live Activity updated (Date-based)")
-        }
-    }
-    
-    private func endLiveActivityOnCompletion() async {
-        guard let activity = activity else { return }
-        
-        let completedState = ReadingTimerAttributes.ContentState(
-            timerStartDate: nil,
-            pausedTime: TimeInterval(targetMinutes * 60),
-            isRunning: false,
-            isTimerMode: isTimerMode,
-            targetMinutes: targetMinutes,
-            timerEndDate: nil
-        )
-        
-        await activity.end(
-            ActivityContent(state: completedState, staleDate: nil),
-            dismissalPolicy: .immediate
-        )
-        
-        self.activity = nil
-        print("✅ Live Activity ended - Timer completed")
-    }
-    
+
+
     private func endLiveActivity() {
         guard let activity = activity else { return }
-        
-        Task { @MainActor in
-            await activity.end(nil, dismissalPolicy: .immediate)
-            print("⏹️ Live Activity ended")
-        }
-        
+        Task { await activity.end(nil, dismissalPolicy: .immediate) }
         self.activity = nil
     }
-    
+
     private func endAllLiveActivities() {
-        Task { @MainActor in
+        Task {
             for activity in Activity<ReadingTimerAttributes>.activities {
                 await activity.end(nil, dismissalPolicy: .immediate)
             }
         }
-        self.activity = nil
     }
-    
+
+    // MARK: - Utils
+
     private func playAlarm() {
         AudioServicesPlaySystemSound(1005)
         AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
     }
-    
+
     private func checkTimerCompletionOnAppear() {
-        guard isTimerMode, let endDate = timerEndDate, Date() >= endDate, isRunning else { return }
-        
-        print("⏰ Timer completed while in background")
+        guard isTimerMode,
+              let end = timerEndDate,
+              Date() >= end,
+              isRunning else { return }
         handleTimerCompletion()
     }
-    
-    // MARK: - 통일된 시간 포맷팅 함수
+
+    private func scheduleTimerCompletionNotification(in seconds: TimeInterval) {
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: ["timerCompletion"])
+
+        let content = UNMutableNotificationContent()
+        content.title = "Reading Timer Complete!"
+        content.body = "\(targetMinutes) minutes reached."
+        content.sound = .default
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "timerCompletion",
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request)
+    }
+
     private func formatTime(_ time: TimeInterval) -> String {
-        let hours = Int(time) / 3600
-        let minutes = Int(time) / 60 % 60
-        let seconds = Int(time) % 60
-        
-        // 1시간 이상: h:mm:ss
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        }
-        // 1시간 미만: m:ss
-        else {
-            return String(format: "%d:%02d", minutes, seconds)
-        }
+        let h = Int(time) / 3600
+        let m = Int(time) / 60 % 60
+        let s = Int(time) % 60
+        return h > 0
+            ? String(format: "%d:%02d:%02d", h, m, s)
+            : String(format: "%d:%02d", m, s)
     }
 }
+
 
 // MARK: - Timer Picker View
 

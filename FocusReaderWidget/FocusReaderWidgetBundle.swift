@@ -13,13 +13,12 @@ struct FocusReaderWidgetBundle: WidgetBundle {
 struct ReadingTimerLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: ReadingTimerAttributes.self) { context in
-            // 잠금 화면 UI
             LockScreenLiveActivityView(context: context)
                 .activityBackgroundTint(Color.black.opacity(0.25))
                 .activitySystemActionForegroundColor(.white)
-            
         } dynamicIsland: { context in
             DynamicIsland {
+
                 // Expanded - Leading
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 8) {
@@ -31,185 +30,159 @@ struct ReadingTimerLiveActivity: Widget {
                             .lineLimit(1)
                     }
                 }
-                
-                // Expanded - Trailing
+
+                // Expanded - Trailing ✅ FIX
                 DynamicIslandExpandedRegion(.trailing) {
-                    if context.state.isRunning, let startDate = context.state.timerStartDate {
-                        if context.state.isTimerMode, let endDate = context.state.timerEndDate {
-                            // 카운트다운 타이머
+                    if context.state.isRunning {
+                        if context.state.isTimerMode,
+                           let endDate = context.state.timerEndDate {
+
                             let remaining = endDate.timeIntervalSince(Date())
-                            Group {
-                                if remaining > 0 {
-                                    // 진행 중 - 실시간 카운트다운
-                                    Text(endDate, style: .timer)
-                                } else {
-                                    // 완료 - 고정 텍스트
-                                    Text("0:00")
-                                        .foregroundColor(.red)
-                                }
+
+                            if remaining > 0 {
+                                Text(
+                                    timerInterval: Date() ... endDate,
+                                    countsDown: true
+                                )
+                                .font(.system(.caption, design: .monospaced))
+                                .fontWeight(.semibold)
+                                .monospacedDigit()
+                                .lineLimit(1)
+                            } else {
+                                Text("0:00")
+                                    .foregroundColor(.red)
                             }
-                            .font(.system(.caption, design: .monospaced))
-                            .fontWeight(.semibold)
-                            .monospacedDigit()
-                            .minimumScaleFactor(0.5)
-                            .lineLimit(1)
-                        } else {
-                            // 스톱워치
+
+                        } else if let startDate = context.state.timerStartDate {
+                            // 스톱워치 (카운트업)
                             Text(startDate, style: .timer)
                                 .font(.system(.caption, design: .monospaced))
                                 .fontWeight(.semibold)
                                 .monospacedDigit()
-                                .minimumScaleFactor(0.5)
                                 .lineLimit(1)
                         }
                     } else {
                         Text(formatPausedTime(context.state.pausedTime))
                             .font(.system(.caption, design: .monospaced))
                             .fontWeight(.semibold)
-                            .minimumScaleFactor(0.5)
-                            .lineLimit(1)
                     }
                 }
-                
-                // Expanded - Bottom
+
+                // Expanded - Bottom (이미 정상)
                 DynamicIslandExpandedRegion(.bottom) {
                     if context.state.isTimerMode,
                        context.state.isRunning,
                        let startDate = context.state.timerStartDate,
                        let endDate = context.state.timerEndDate {
-                        let remaining = endDate.timeIntervalSince(Date())
-                        if remaining > 0 {
-                            ProgressView(timerInterval: startDate...endDate, countsDown: true)
-                                .tint(.blue)
-                        }
+
+                        ProgressView(
+                            timerInterval: startDate ... endDate,
+                            countsDown: true
+                        )
+                        .tint(.blue)
                     }
                 }
+
             } compactLeading: {
                 Image(systemName: "book.fill")
                     .foregroundColor(.blue)
-            } compactTrailing: {
-                if context.state.isRunning, let startDate = context.state.timerStartDate {
-                    if context.state.isTimerMode, let endDate = context.state.timerEndDate {
-                        // 카운트다운 타이머
-                        let remaining = endDate.timeIntervalSince(Date())
-                        Group {
-                            if remaining > 0 {
-                                // 진행 중 - 실시간 카운트다운
-                                Text(endDate, style: .timer)
-                            } else {
-                                // 완료 - 고정 텍스트
-                                Text("0:00")
-                                    .foregroundColor(.red)
-                            }
-                        }
+            }
+
+            // Compact Trailing ✅ FIX
+            compactTrailing: {
+                if context.state.isRunning,
+                   context.state.isTimerMode,
+                   let endDate = context.state.timerEndDate {
+
+                    let remaining = endDate.timeIntervalSince(Date())
+
+                    if remaining > 0 {
+                        Text(
+                            timerInterval: Date() ... endDate,
+                            countsDown: true
+                        )
                         .font(.system(.caption2, design: .monospaced))
                         .fontWeight(.semibold)
                         .monospacedDigit()
-                        .minimumScaleFactor(0.4)
-                        .lineLimit(1)
                     } else {
-                        Text(startDate, style: .timer)
-                            .font(.system(.caption2, design: .monospaced))
-                            .fontWeight(.semibold)
-                            .monospacedDigit()
-                            .minimumScaleFactor(0.4)
-                            .lineLimit(1)
+                        Text("0:00")
+                            .foregroundColor(.red)
                     }
+
+                } else if let startDate = context.state.timerStartDate {
+                    Text(startDate, style: .timer)
+                        .font(.system(.caption2, design: .monospaced))
+                        .fontWeight(.semibold)
                 } else {
                     Text(formatPausedTime(context.state.pausedTime))
                         .font(.system(.caption2, design: .monospaced))
-                        .fontWeight(.semibold)
-                        .minimumScaleFactor(0.4)
-                        .lineLimit(1)
                 }
-            } minimal: {
+            }
+
+            minimal: {
                 Image(systemName: context.state.isRunning ? "timer" : "pause.circle.fill")
                     .foregroundColor(.blue)
             }
         }
     }
-    
-    // MARK: - 통일된 시간 포맷팅
+
     private func formatPausedTime(_ time: TimeInterval) -> String {
-        let hours = Int(time) / 3600
-        let minutes = Int(time) / 60 % 60
+        let minutes = Int(time) / 60
         let seconds = Int(time) % 60
-        
-        // 1시간 이상: h:mm:ss
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        }
-        // 1시간 미만: m:ss
-        else {
-            return String(format: "%d:%02d", minutes, seconds)
-        }
+        return String(format: "%d:%02d", minutes, seconds)
     }
 }
+
 
 // MARK: - Lock Screen View
 struct LockScreenLiveActivityView: View {
     let context: ActivityViewContext<ReadingTimerAttributes>
-    
+
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            // 왼쪽: 시간 표시
-            HStack(spacing: 0) {
-                if context.state.isRunning, let startDate = context.state.timerStartDate {
-                    if context.state.isTimerMode, let endDate = context.state.timerEndDate {
-                        // 카운트다운 타이머
-                        let remaining = endDate.timeIntervalSince(Date())
-                        Group {
-                            if remaining > 0 {
-                                // 진행 중 - 실시간 카운트다운
-                                Text(endDate, style: .timer)
-                                    .foregroundColor(shouldShowWarning(context.state) ? .red : .white)
-                            } else {
-                                // 완료 - 고정 텍스트
-                                Text("0:00")
-                                    .foregroundColor(.red)
-                            }
-                        }
-                        .font(.system(size: 32, weight: .semibold, design: .monospaced))
-                        .monospacedDigit()
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                    } else {
-                        // 경과 시간 (스톱워치)
-                        Text(startDate, style: .timer)
-                            .font(.system(size: 32, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.white)
-                            .monospacedDigit()
-                            .minimumScaleFactor(0.6)
-                            .lineLimit(1)
-                    }
+        HStack(spacing: 12) {
+
+            if context.state.isRunning,
+               context.state.isTimerMode,
+               let endDate = context.state.timerEndDate {
+
+                let remaining = endDate.timeIntervalSince(Date())
+
+                if remaining > 0 {
+                    Text(
+                        timerInterval: Date() ... endDate,
+                        countsDown: true
+                    )
+                    .font(.system(size: 32, weight: .semibold, design: .monospaced))
+                    .foregroundColor(remaining < 60 ? .red : .white)
+                    .monospacedDigit()
                 } else {
-                    // 일시정지 상태
-                    Text(formatPausedTime(context.state.pausedTime))
+                    Text("0:00")
                         .font(.system(size: 32, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.white)
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
+                        .foregroundColor(.red)
                 }
+
+            } else if let startDate = context.state.timerStartDate {
+                Text(startDate, style: .timer)
+                    .font(.system(size: 32, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.white)
+            } else {
+                Text(formatPausedTime(context.state.pausedTime))
+                    .font(.system(size: 32, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.white)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            
-            // 오른쪽: 책 아이콘과 제목
-            HStack(spacing: 6) {
+
+            Spacer()
+
+            VStack(alignment: .leading) {
                 Image(systemName: "book.fill")
-                    .font(.system(size: 16))
                     .foregroundColor(.blue)
-                
                 Text(context.attributes.bookTitle)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.caption)
                     .foregroundColor(.white)
                     .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: 100, alignment: .leading)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding()
     }
     
     // MARK: - 통일된 시간 포맷팅
