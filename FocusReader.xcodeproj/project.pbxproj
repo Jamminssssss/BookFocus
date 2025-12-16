@@ -39,6 +39,7 @@
 /* Begin PBXFileReference section */
 		862460822EE9300800C67BD2 /* FocusReader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FocusReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		862461752EE940BB00C67BD2 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/StoreKit.framework; sourceTree = DEVELOPER_DIR; };
+		868CFF512EF1030F00FE66C1 /* FocusReaderWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FocusReaderWidgetExtension.entitlements; sourceTree = "<group>"; };
 		86B54A1D2EE9624700C5CE97 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		86B54A1F2EE9624800C5CE97 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		86B54B072EEBDFFE00C5CE97 /* FocusReaderWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusReaderWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -111,6 +112,7 @@
 		862460792EE9300800C67BD2 = {
 			isa = PBXGroup;
 			children = (
+				868CFF512EF1030F00FE66C1 /* FocusReaderWidgetExtension.entitlements */,
 				862460842EE9300800C67BD2 /* FocusReader */,
 				86B54B0A2EEBDFFE00C5CE97 /* FocusReaderWidget */,
 				862461742EE940BB00C67BD2 /* Frameworks */,
@@ -285,9 +287,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FocusReader/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BookFocus;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "This app needs access to your calendar to save reading sessions.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to your camera to take photos of book covers";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app requires access to the camera to capture book covers.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs access to your photo library to save book covers.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -337,9 +341,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FocusReader/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BookFocus;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "This app needs access to your calendar to save reading sessions.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to your camera to take photos of book covers";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app requires access to the camera to capture book covers.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs access to your photo library to save book covers.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -494,6 +500,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = FocusReaderWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = DUBPMF36TD;
@@ -530,6 +537,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = FocusReaderWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = DUBPMF36TD;

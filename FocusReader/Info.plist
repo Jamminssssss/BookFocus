@@ -2,24 +2,36 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSSupportsLiveActivities</key>
-    <true/>
-    <!-- 카메라 접근 권한 설명 (영어로 변경) -->
-    <key>NSCameraUsageDescription</key>
-    <string>This app requires access to the camera to capture book covers.</string>
-
-    <!-- 백그라운드 모드 -->
+    <!-- Background Modes -->
     <key>UIBackgroundModes</key>
     <array>
         <string>remote-notification</string>
     </array>
-
-    <!-- 캘린더 접근 권한 설명 -->
-    <key>NSCalendarsUsageDescription</key>
-    <string>This app needs access to your calendar to save reading sessions.</string>
-
-    <!-- 앱 암호화 관련 설정 -->
+    
+    <!-- Live Activities 지원 -->
+    <key>NSSupportsLiveActivities</key>
+    <true/>
+    
+    <!-- Live Activities 빈번한 업데이트 허용 -->
+    <key>NSSupportsLiveActivitiesFrequentUpdates</key>
+    <true/>
+    
+    <!-- 앱스토어 제출 시 암호화 설정 (필수) -->
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    
+    <!-- 앱 이름 (필요시 수정) -->
+    <key>CFBundleDisplayName</key>
+    <string>BookFocus</string>
+    
+    <!-- 사진 라이브러리 접근 권한 설명 -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>FocusReader needs access to your photo library to let you choose and add book cover images to your reading collection.</string>
+
+    <!-- 카메라 접근 권한 설명 (책 표지 촬영 시) -->
+    <key>NSCameraUsageDescription</key>
+    <string>FocusReader needs access to your camera to let you take photos of book covers for your reading collection.</string>
+    
+
 </dict>
 </plist>

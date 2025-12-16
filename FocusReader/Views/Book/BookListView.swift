@@ -301,8 +301,8 @@ struct BookCardView: View {
     // MARK: - Computed Properties
     private var totalReadingTime: String {
         guard let sessions = book.sessions else { return "0m" }
-        let totalSeconds = sessions.reduce(0) { $0 + (Double($1.duration ?? 0)) }
-        
+        let totalSeconds = sessions.reduce(0) { $0 + $1.duration }
+
         let hours = Int(totalSeconds / 3600)
         let minutes = Int((totalSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
         

@@ -10,6 +10,10 @@ import SwiftData
 
 @main
 struct FocusReaderApp: App {
+
+    // 🔥 1️⃣ AppDelegate 연결
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Book.self,
