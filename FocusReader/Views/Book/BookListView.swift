@@ -121,25 +121,11 @@ struct BookListView: View {
     
     private func deleteBook(_ book: Book) {
         withAnimation {
-            // 이미지 파일 삭제
-            if let imagePath = book.imagePath,
-               let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-                let imageURL = documentsDirectory.appendingPathComponent(imagePath)
-                try? FileManager.default.removeItem(at: imageURL)
-            }
+            // 🔥 이미지 파일 삭제 코드 제거 (Data로 저장되므로 불필요)
             
             // 관련 데이터 삭제
-            if let sessions = book.sessions {
-                for session in sessions {
-                    modelContext.delete(session)
-                }
-            }
-            
-            if let memos = book.memos {
-                for memo in memos {
-                    modelContext.delete(memo)
-                }
-            }
+            book.sessions?.forEach { modelContext.delete($0) }
+            book.memos?.forEach { modelContext.delete($0) }
             
             // 현재 인덱스 조정
             if currentIndex >= books.count - 1 && currentIndex > 0 {
@@ -205,20 +191,15 @@ struct BookCardView: View {
     // MARK: - Book Cover
     private var bookCoverView: some View {
         Group {
-            if let imagePath = book.imagePath,
-               let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-                let imageURL = documentsDirectory.appendingPathComponent(imagePath)
-                if let imageData = try? Data(contentsOf: imageURL),
-                   let uiImage = UIImage(data: imageData) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 240, height: 340)
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
-                } else {
-                    placeholderCover
-                }
+            // 🔥 coverImageData로 변경
+            if let imageData = book.coverImageData,
+               let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 240, height: 340)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
             } else {
                 placeholderCover
             }

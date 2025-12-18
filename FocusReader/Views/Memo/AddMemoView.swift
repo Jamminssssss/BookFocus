@@ -70,30 +70,35 @@ struct AddMemoView: View {
     }
     
     private var isValid: Bool {
-        !startPage.isEmpty && !endPage.isEmpty && !memo.isEmpty && 
+        !startPage.isEmpty && !endPage.isEmpty && !memo.isEmpty &&
         Int(startPage) != nil && Int(endPage) != nil
     }
     
     private func saveMemo() {
-        guard let startPageInt = Int(startPage), let endPageInt = Int(endPage) else {
+        guard let startPageInt = Int(startPage),
+              let endPageInt = Int(endPage) else {
             errorMessage = "Please enter valid page numbers."
             showError = true
             return
         }
         
-        guard startPageInt >= 0 && endPageInt <= book.totalPages && startPageInt <= endPageInt else {
+        guard startPageInt >= 0,
+              endPageInt <= book.totalPages,
+              startPageInt <= endPageInt else {
             errorMessage = "Page numbers must be valid and start page must be less than or equal to end page."
             showError = true
             return
         }
         
-        let newMemo = PageMemo(startPage: startPageInt, endPage: endPageInt, memo: memo, book: book)
+        let newMemo = PageMemo(
+            startPage: startPageInt,
+            endPage: endPageInt,
+            memo: memo,
+            book: book
+        )
         
-        if book.memos == nil {
-            book.memos = []
-        }
-        book.memos?.append(newMemo)
-        
+        // ✅ 이제 optional 아님
+        book.memos = (book.memos ?? []) + [newMemo]
         modelContext.insert(newMemo)
         
         do {
@@ -105,4 +110,3 @@ struct AddMemoView: View {
         }
     }
 }
-

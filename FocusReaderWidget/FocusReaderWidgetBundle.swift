@@ -21,17 +21,13 @@ struct ReadingTimerLiveActivity: Widget {
 
                 // Expanded - Leading
                 DynamicIslandExpandedRegion(.leading) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "book.fill")
-                            .foregroundColor(.blue)
-                        Text(context.attributes.bookTitle)
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .lineLimit(1)
-                    }
+                    Text(context.attributes.bookTitle)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .lineLimit(1)
                 }
 
-                // Expanded - Trailing ✅ FIX
+                // Expanded - Trailing
                 DynamicIslandExpandedRegion(.trailing) {
                     if context.state.isRunning {
                         if context.state.isTimerMode,
@@ -68,7 +64,7 @@ struct ReadingTimerLiveActivity: Widget {
                     }
                 }
 
-                // Expanded - Bottom (이미 정상)
+                // Expanded - Bottom
                 DynamicIslandExpandedRegion(.bottom) {
                     if context.state.isTimerMode,
                        context.state.isRunning,
@@ -84,11 +80,12 @@ struct ReadingTimerLiveActivity: Widget {
                 }
 
             } compactLeading: {
-                Image(systemName: "book.fill")
-                    .foregroundColor(.blue)
+                Text(context.attributes.bookTitle)
+                    .font(.caption2)
+                    .lineLimit(1)
             }
 
-            // Compact Trailing ✅ FIX
+            // Compact Trailing
             compactTrailing: {
                 if context.state.isRunning,
                    context.state.isTimerMode,
@@ -173,13 +170,15 @@ struct LockScreenLiveActivityView: View {
 
             Spacer()
 
-            VStack(alignment: .leading) {
-                Image(systemName: "book.fill")
-                    .foregroundColor(.blue)
+            VStack(alignment: .leading, spacing: 4) {
                 Text(context.attributes.bookTitle)
                     .font(.caption)
                     .foregroundColor(.white)
                     .lineLimit(2)
+                
+                Text("Page \(context.state.currentPage) / \(context.state.totalPages)")
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.7))
             }
         }
         .padding()

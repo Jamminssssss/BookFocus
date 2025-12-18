@@ -1,16 +1,19 @@
-//
-//  ContentView.swift
-//  FocusReader
-//
-//  Created by JeaminPark on 12/10/25.
-//
-
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
     var body: some View {
         BookListView()
+            .onAppear {
+                // 🔥 동기화 모니터링 (콘솔 로그만)
+                NotificationCenter.default.addObserver(
+                    forName: Notification.Name("NSPersistentStoreRemoteChange"),
+                    object: nil,
+                    queue: .main
+                ) { _ in
+                    print("☁️ iCloud 동기화 발생")
+                }
+            }
     }
 }
 

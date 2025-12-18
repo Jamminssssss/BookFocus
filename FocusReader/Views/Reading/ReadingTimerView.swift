@@ -14,7 +14,7 @@ struct ReadingTimerView: View {
     @State private var elapsedTime: TimeInterval = 0
     @State private var timer: Timer?
     @State private var isRunning: Bool = false
-    @State private var currentSession: ReadingSession?
+    @State private var currentSession: ReadingSession? // 임시 세션
     @State private var showEndPageInput: Bool = false
 
     // ⏱ Timer mode
@@ -27,25 +27,33 @@ struct ReadingTimerView: View {
     @State private var showTimerAlert: Bool = false
 
     // Audio / Live Activity
-    @State private var audioPlayer: AVAudioPlayer?
     @State private var activity: Activity<ReadingTimerAttributes>?
 
-    // MARK: - UI
     var body: some View {
         VStack {
             Spacer()
 
+            // 책 정보
             VStack(spacing: 10) {
-                if let imagePath = book.imagePath,
-                   let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first,
-                   let data = try? Data(contentsOf: documents.appendingPathComponent(imagePath)),
-                   let uiImage = UIImage(data: data) {
+                // 🔥 coverImageData 사용
+                if let imageData = book.coverImageData,
+                   let uiImage = UIImage(data: imageData) {
 
                     Image(uiImage: uiImage)
                         .resizable()
                         .scaledToFit()
                         .frame(height: 150)
                         .cornerRadius(10)
+                } else {
+                    // 이미지 없는 경우 placeholder
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(height: 150)
+                        .overlay(
+                            Image(systemName: "book.closed")
+                                .font(.largeTitle)
+                                .foregroundColor(.white.opacity(0.6))
+                        )
                 }
 
                 Text(book.title)
@@ -57,6 +65,7 @@ struct ReadingTimerView: View {
                     .foregroundColor(.secondary)
             }
 
+            // 타이머/페이지
             VStack(spacing: 20) {
                 if isTimerMode {
                     let remaining = max(0, TimeInterval(targetMinutes * 60) - elapsedTime)
@@ -73,6 +82,7 @@ struct ReadingTimerView: View {
             }
             .padding(.vertical, 40)
 
+            // 컨트롤 버튼
             HStack(spacing: 20) {
                 Button(action: toggleTimer) {
                     Label(isRunning ? "Pause" : "Start",
@@ -110,6 +120,16 @@ struct ReadingTimerView: View {
         }
         .sheet(isPresented: $showEndPageInput) {
             EndPageInputView(book: book, session: currentSession) {
+                // Save 버튼 눌렀을 때만 CoreData에 저장
+                if let session = currentSession {
+                    modelContext.insert(session)
+                    if book.sessions == nil {
+                        book.sessions = []
+                    }
+                    book.sessions?.append(session)
+                    try? modelContext.save()
+                }
+                currentSession = nil
                 dismiss()
             }
         }
@@ -118,15 +138,13 @@ struct ReadingTimerView: View {
         }
         .alert("Timer Complete!", isPresented: $showTimerAlert) {
             Button("Save Reading") { showEndPageInput = true }
-            Button("Cancel", role: .cancel) { resetAfterCompletion() }
+            Button("Cancel", role: .cancel) { cancelSession() }
         }
         .onAppear {
             endAllLiveActivities()
-            checkTimerCompletionOnAppear()
         }
         .onDisappear {
             timer?.invalidate()
-            audioPlayer?.stop()
             endLiveActivity()
         }
     }
@@ -139,16 +157,13 @@ struct ReadingTimerView: View {
 
     private func startTimer() {
         let now = Date()
-
-        let session = ReadingSession(
+        // 임시 세션 생성 (CoreData insert X, book.sessions append X)
+        currentSession = ReadingSession(
             startTime: now,
             startPage: book.currentPage,
             book: book
         )
-        modelContext.insert(session)
-        book.sessions?.append(session)
 
-        currentSession = session
         sessionStartTime = now
         pausedElapsedTime = 0
         elapsedTime = 0
@@ -156,7 +171,6 @@ struct ReadingTimerView: View {
 
         if isTimerMode {
             timerEndDate = now.addingTimeInterval(TimeInterval(targetMinutes * 60))
-            scheduleTimerCompletionNotification(in: TimeInterval(targetMinutes * 60))
         }
 
         startLiveActivity()
@@ -170,7 +184,6 @@ struct ReadingTimerView: View {
         if isTimerMode {
             let remaining = max(0, TimeInterval(targetMinutes * 60) - pausedElapsedTime)
             timerEndDate = Date().addingTimeInterval(remaining)
-            scheduleTimerCompletionNotification(in: remaining)
         }
 
         startLiveActivity()
@@ -181,10 +194,6 @@ struct ReadingTimerView: View {
         pausedElapsedTime += Date().timeIntervalSince(sessionStartTime)
         isRunning = false
         timer?.invalidate()
-
-        UNUserNotificationCenter.current()
-            .removePendingNotificationRequests(withIdentifiers: ["timerCompletion"])
-
         endLiveActivity()
     }
 
@@ -203,6 +212,12 @@ struct ReadingTimerView: View {
         showEndPageInput = true
     }
 
+    private func cancelSession() {
+        // Cancel 시 CoreData에 절대 insert하지 않고 임시 세션만 삭제
+        currentSession = nil
+        resetAfterCompletion()
+    }
+
     private func startUITimer() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
@@ -213,8 +228,6 @@ struct ReadingTimerView: View {
             }
         }
     }
-
-    // MARK: - Completion
 
     private func handleTimerCompletion() {
         timer?.invalidate()
@@ -233,9 +246,9 @@ struct ReadingTimerView: View {
     }
 
     private func resetAfterCompletion() {
-        currentSession = nil
         pausedElapsedTime = 0
         elapsedTime = 0
+        isRunning = false
     }
 
     // MARK: - Live Activity
@@ -243,24 +256,26 @@ struct ReadingTimerView: View {
     private func startLiveActivity() {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
-        // ⭐ 핵심 수정
         let activityStartDate = Date().addingTimeInterval(-pausedElapsedTime)
 
         let attributes = ReadingTimerAttributes(
             bookTitle: book.title,
-            bookImagePath: book.imagePath,
+            bookCoverImageData: book.coverImageData,
             sessionStartTime: sessionStartTime
         )
 
+
         let contentState = ReadingTimerAttributes.ContentState(
-            timerStartDate: activityStartDate,   // ⭕ 누적 반영
+            timerStartDate: activityStartDate,
             pausedTime: pausedElapsedTime,
             isRunning: true,
             isTimerMode: isTimerMode,
             targetMinutes: targetMinutes,
             timerEndDate: isTimerMode
                 ? activityStartDate.addingTimeInterval(TimeInterval(targetMinutes * 60))
-                : nil
+                : nil,
+            currentPage: book.currentPage,
+            totalPages: book.totalPages
         )
 
         do {
@@ -270,12 +285,10 @@ struct ReadingTimerView: View {
                 content: content,
                 pushType: nil
             )
-            print("✅ Live Activity started (elapsed preserved)")
         } catch {
-            print("❌ Live Activity error: \(error)")
+            print("Live Activity error: \(error)")
         }
     }
-
 
     private func endLiveActivity() {
         guard let activity = activity else { return }
@@ -298,33 +311,6 @@ struct ReadingTimerView: View {
         AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
     }
 
-    private func checkTimerCompletionOnAppear() {
-        guard isTimerMode,
-              let end = timerEndDate,
-              Date() >= end,
-              isRunning else { return }
-        handleTimerCompletion()
-    }
-
-    private func scheduleTimerCompletionNotification(in seconds: TimeInterval) {
-        UNUserNotificationCenter.current()
-            .removePendingNotificationRequests(withIdentifiers: ["timerCompletion"])
-
-        let content = UNMutableNotificationContent()
-        content.title = "Reading Timer Complete!"
-        content.body = "\(targetMinutes) minutes reached."
-        content.sound = .default
-
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
-        let request = UNNotificationRequest(
-            identifier: "timerCompletion",
-            content: content,
-            trigger: trigger
-        )
-
-        UNUserNotificationCenter.current().add(request)
-    }
-
     private func formatTime(_ time: TimeInterval) -> String {
         let h = Int(time) / 3600
         let m = Int(time) / 60 % 60
@@ -334,6 +320,8 @@ struct ReadingTimerView: View {
             : String(format: "%d:%02d", m, s)
     }
 }
+
+
 
 
 // MARK: - Timer Picker View

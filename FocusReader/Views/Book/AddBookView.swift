@@ -1,10 +1,3 @@
-//
-//  AddBookView.swift
-//  FocusReader
-//
-//  Created by JeaminPark on 12/10/25.
-//
-
 import SwiftUI
 import SwiftData
 import PhotosUI
@@ -18,7 +11,6 @@ struct AddBookView: View {
     @State private var totalPages: String = ""
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var selectedImage: UIImage?
-    @State private var imagePath: String?
     @State private var showCamera = false
     
     var body: some View {
@@ -63,15 +55,11 @@ struct AddBookView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveBook()
-                    }
-                    .disabled(!isValid)
+                    Button("Save") { saveBook() }
+                        .disabled(!isValid)
                 }
             }
             .onChange(of: selectedPhoto) { oldValue, newValue in
@@ -79,18 +67,12 @@ struct AddBookView: View {
                     if let data = try? await newValue?.loadTransferable(type: Data.self),
                        let image = UIImage(data: data) {
                         selectedImage = image
-                        saveImage(image: image)
                     }
                 }
             }
             .sheet(isPresented: $showCamera) {
                 ImagePicker(image: $selectedImage, sourceType: .camera)
                     .ignoresSafeArea()
-            }
-            .onChange(of: selectedImage) { oldValue, newValue in
-                if let image = newValue, oldValue != newValue {
-                    saveImage(image: image)
-                }
             }
         }
     }
@@ -99,70 +81,41 @@ struct AddBookView: View {
         !title.isEmpty && !author.isEmpty && !totalPages.isEmpty && Int(totalPages) != nil
     }
     
-    private func saveImage(image: UIImage) {
-        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            return
-        }
+    // 🔥 이미지 리사이징 함수 (CloudKit 용량 최적화)
+    private func resizeImage(_ image: UIImage, targetWidth: CGFloat = 800) -> UIImage {
+        let scale = targetWidth / image.size.width
+        let newHeight = image.size.height * scale
+        let size = CGSize(width: targetWidth, height: newHeight)
         
-        let fileName = UUID().uuidString + ".jpg"
-        let fileURL = documentsDirectory.appendingPathComponent(fileName)
-        
-        if let imageData = image.jpegData(compressionQuality: 0.8) {
-            try? imageData.write(to: fileURL)
-            imagePath = fileName
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
         }
     }
     
     private func saveBook() {
         guard let pages = Int(totalPages) else { return }
-        
+
+        // 🔥 이미지를 Data로 변환 (리사이징 + 압축)
+        let imageData: Data? = selectedImage.flatMap {
+            let resized = resizeImage($0, targetWidth: 800)
+            return resized.jpegData(compressionQuality: 0.7)
+        }
+
         let newBook = Book(
             title: title,
             author: author,
             totalPages: pages,
-            imagePath: imagePath
+            coverImageData: imageData
         )
-        
-        modelContext.insert(newBook)
-        dismiss()
-    }
-}
 
-// UIImagePickerController를 SwiftUI에서 사용하기 위한 래퍼
-struct ImagePicker: UIViewControllerRepresentable {
-    @Binding var image: UIImage?
-    @Environment(\.dismiss) private var dismiss
-    let sourceType: UIImagePickerController.SourceType
-    
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = sourceType
-        picker.delegate = context.coordinator
-        return picker
-    }
-    
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: ImagePicker
-        
-        init(_ parent: ImagePicker) {
-            self.parent = parent
-        }
-        
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            if let image = info[.originalImage] as? UIImage {
-                parent.image = image
-            }
-            parent.dismiss()
-        }
-        
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
+        modelContext.insert(newBook)
+
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            print("Failed to save book: \(error)")
         }
     }
 }
