@@ -24,14 +24,12 @@
     <key>CFBundleDisplayName</key>
     <string>BookFocus</string>
     
-    <!-- 앱 버전 (CFBundleShortVersionString) -->
-    <key>CFBundleShortVersionString</key>
-    <string>1.0.1</string>
-    
-    <!-- 빌드 번호 (CFBundleVersion) -->
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    
+    <!-- 버전 정보 (변수로 관리) -->
+     <key>CFBundleShortVersionString</key>
+     <string>$(MARKETING_VERSION)</string>
+     <key>CFBundleVersion</key>
+     <string>$(CURRENT_PROJECT_VERSION)</string>
+     
     <!-- 사진 라이브러리 접근 권한 설명 -->
     <key>NSPhotoLibraryUsageDescription</key>
     <string>FocusReader needs access to your photo library to let you choose and add book cover images to your reading collection.</string>

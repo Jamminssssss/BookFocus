@@ -13,54 +13,60 @@ struct FocusReaderWidgetBundle: WidgetBundle {
 struct ReadingTimerLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: ReadingTimerAttributes.self) { context in
+            // 잠금화면 & 알림센터 (모든 기기)
             LockScreenLiveActivityView(context: context)
                 .activityBackgroundTint(Color.black.opacity(0.25))
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
-
                 // Expanded - Leading
                 DynamicIslandExpandedRegion(.leading) {
-                    Text(context.attributes.bookTitle)
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(context.attributes.bookTitle)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .lineLimit(1)
+                        
+                        Text("Page \(context.state.currentPage)/\(context.state.totalPages)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 // Expanded - Trailing
                 DynamicIslandExpandedRegion(.trailing) {
-                    if context.state.isRunning {
-                        if context.state.isTimerMode,
-                           let endDate = context.state.timerEndDate {
+                    VStack(alignment: .trailing, spacing: 4) {
+                        if context.state.isRunning {
+                            if context.state.isTimerMode,
+                               let endDate = context.state.timerEndDate {
+                                let remaining = endDate.timeIntervalSince(Date())
 
-                            let remaining = endDate.timeIntervalSince(Date())
-
-                            if remaining > 0 {
-                                Text(
-                                    timerInterval: Date() ... endDate,
-                                    countsDown: true
-                                )
-                                .font(.system(.caption, design: .monospaced))
-                                .fontWeight(.semibold)
-                                .monospacedDigit()
-                                .lineLimit(1)
-                            } else {
-                                Text("0:00")
-                                    .foregroundColor(.red)
+                                if remaining > 0 {
+                                    Text(timerInterval: Date() ... endDate, countsDown: true)
+                                        .font(.system(.caption, design: .monospaced))
+                                        .fontWeight(.semibold)
+                                        .monospacedDigit()
+                                        .foregroundColor(remaining < 60 ? .red : .primary)
+                                } else {
+                                    Text("0:00")
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundColor(.red)
+                                }
+                            } else if let startDate = context.state.timerStartDate {
+                                Text(startDate, style: .timer)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .fontWeight(.semibold)
+                                    .monospacedDigit()
                             }
-
-                        } else if let startDate = context.state.timerStartDate {
-                            // 스톱워치 (카운트업)
-                            Text(startDate, style: .timer)
+                        } else {
+                            Text(formatPausedTime(context.state.pausedTime))
                                 .font(.system(.caption, design: .monospaced))
                                 .fontWeight(.semibold)
-                                .monospacedDigit()
-                                .lineLimit(1)
                         }
-                    } else {
-                        Text(formatPausedTime(context.state.pausedTime))
-                            .font(.system(.caption, design: .monospaced))
-                            .fontWeight(.semibold)
+                        
+                        Text(context.state.isRunning ? "Reading..." : "Paused")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
                 }
 
@@ -70,53 +76,48 @@ struct ReadingTimerLiveActivity: Widget {
                        context.state.isRunning,
                        let startDate = context.state.timerStartDate,
                        let endDate = context.state.timerEndDate {
-
-                        ProgressView(
-                            timerInterval: startDate ... endDate,
-                            countsDown: true
-                        )
-                        .tint(.blue)
+                        ProgressView(timerInterval: startDate ... endDate, countsDown: true)
+                            .tint(.blue)
+                            .padding(.top, 8)
                     }
                 }
 
             } compactLeading: {
-                Text(context.attributes.bookTitle)
-                    .font(.caption2)
-                    .lineLimit(1)
-            }
-
-            // Compact Trailing
-            compactTrailing: {
-                if context.state.isRunning,
-                   context.state.isTimerMode,
-                   let endDate = context.state.timerEndDate {
-
-                    let remaining = endDate.timeIntervalSince(Date())
-
-                    if remaining > 0 {
-                        Text(
-                            timerInterval: Date() ... endDate,
-                            countsDown: true
-                        )
-                        .font(.system(.caption2, design: .monospaced))
-                        .fontWeight(.semibold)
-                        .monospacedDigit()
-                    } else {
-                        Text("0:00")
-                            .foregroundColor(.red)
+                // Compact Leading
+                HStack(spacing: 4) {
+                    Image(systemName: context.state.isRunning ? "book.fill" : "pause.circle.fill")
+                        .font(.caption2)
+                    Text(context.attributes.bookTitle)
+                        .font(.caption2)
+                        .lineLimit(1)
+                }
+            } compactTrailing: {
+                // Compact Trailing
+                if context.state.isRunning {
+                    if context.state.isTimerMode, let endDate = context.state.timerEndDate {
+                        let remaining = endDate.timeIntervalSince(Date())
+                        if remaining > 0 {
+                            Text(timerInterval: Date() ... endDate, countsDown: true)
+                                .font(.system(.caption2, design: .monospaced))
+                                .fontWeight(.semibold)
+                                .monospacedDigit()
+                                .foregroundColor(remaining < 60 ? .red : .primary)
+                        } else {
+                            Text("0:00")
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundColor(.red)
+                        }
+                    } else if let startDate = context.state.timerStartDate {
+                        Text(startDate, style: .timer)
+                            .font(.system(.caption2, design: .monospaced))
+                            .fontWeight(.semibold)
                     }
-
-                } else if let startDate = context.state.timerStartDate {
-                    Text(startDate, style: .timer)
-                        .font(.system(.caption2, design: .monospaced))
-                        .fontWeight(.semibold)
                 } else {
                     Text(formatPausedTime(context.state.pausedTime))
                         .font(.system(.caption2, design: .monospaced))
                 }
-            }
-
-            minimal: {
+            } minimal: {
+                // Minimal
                 Image(systemName: context.state.isRunning ? "timer" : "pause.circle.fill")
                     .foregroundColor(.blue)
             }
@@ -124,9 +125,15 @@ struct ReadingTimerLiveActivity: Widget {
     }
 
     private func formatPausedTime(_ time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
+        let hours = Int(time) / 3600
+        let minutes = Int(time) / 60 % 60
         let seconds = Int(time) % 60
-        return String(format: "%d:%02d", minutes, seconds)
+        
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%d:%02d", minutes, seconds)
+        }
     }
 }
 
@@ -190,15 +197,14 @@ struct LockScreenLiveActivityView: View {
         let minutes = Int(time) / 60 % 60
         let seconds = Int(time) % 60
         
-        // 1시간 이상: h:mm:ss
         if hours > 0 {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        }
-        // 1시간 미만: m:ss
-        else {
+        } else {
             return String(format: "%d:%02d", minutes, seconds)
         }
     }
+
+
     
     private func shouldShowWarning(_ state: ReadingTimerAttributes.ContentState) -> Bool {
         guard state.isTimerMode,

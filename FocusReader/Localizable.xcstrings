@@ -239,9 +239,6 @@
         }
       }
     },
-    "Key" : {
-      "extractionState" : "manual"
-    },
     "Memo" : {
       "localizations" : {
         "ko" : {

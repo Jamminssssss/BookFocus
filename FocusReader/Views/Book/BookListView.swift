@@ -16,6 +16,13 @@ struct BookListView: View {
     @State private var currentIndex: Int = 0
     @State private var showDetails: Bool = false
     
+    // iPad 감지
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    
+    private var isIPad: Bool {
+        horizontalSizeClass == .regular
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -40,7 +47,8 @@ struct BookListView: View {
                                 BookCardView(
                                     book: book,
                                     onDelete: { deleteBook(book) },
-                                    showDetails: $showDetails
+                                    showDetails: $showDetails,
+                                    isIPad: isIPad
                                 )
                                 .tag(index)
                             }
@@ -80,15 +88,15 @@ struct BookListView: View {
     private var emptyStateView: some View {
         VStack(spacing: 24) {
             Image(systemName: "books.vertical")
-                .font(.system(size: 80))
+                .font(.system(size: isIPad ? 120 : 80))
                 .foregroundStyle(.blue.opacity(0.5))
             
             Text("No Books Yet")
-                .font(.title)
+                .font(isIPad ? .largeTitle : .title)
                 .fontWeight(.bold)
             
             Text("Start your reading journey by adding a book")
-                .font(.body)
+                .font(isIPad ? .title3 : .body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
@@ -101,7 +109,7 @@ struct BookListView: View {
             // 페이지 인디케이터
             if books.count > 1 {
                 Text("\(currentIndex + 1) / \(books.count)")
-                    .font(.caption)
+                    .font(isIPad ? .body : .caption)
                     .foregroundColor(.secondary)
                     .padding(.top, 8)
             }
@@ -121,8 +129,6 @@ struct BookListView: View {
     
     private func deleteBook(_ book: Book) {
         withAnimation {
-            // 🔥 이미지 파일 삭제 코드 제거 (Data로 저장되므로 불필요)
-            
             // 관련 데이터 삭제
             book.sessions?.forEach { modelContext.delete($0) }
             book.memos?.forEach { modelContext.delete($0) }
@@ -148,66 +154,89 @@ struct BookCardView: View {
     let book: Book
     let onDelete: () -> Void
     @Binding var showDetails: Bool
+    let isIPad: Bool
+    
+    // 디바이스별 크기 설정
+    private var coverSize: CGSize {
+        if isIPad {
+            return CGSize(width: 480, height: 680)  // iPad: 화면에 맞게 크게
+        } else {
+            return CGSize(width: 280, height: 400)  // iPhone: 기존보다 크게
+        }
+    }
+    
+    private var topPadding: CGFloat {
+        isIPad ? 60 : 40
+    }
+    
+    private var horizontalPadding: CGFloat {
+        isIPad ? 48 : 32
+    }
     
     var body: some View {
-        VStack(spacing: 0) {
-            VStack(spacing: 24) {
-                
-                // 책 표지
-                bookCoverView
-                    .padding(.top, 40)
-                    .onTapGesture {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            showDetails.toggle()
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: isIPad ? 32 : 24) {
+                    
+                    // 책 표지
+                    bookCoverView
+                        .padding(.top, topPadding)
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                showDetails.toggle()
+                            }
                         }
+                    
+                    // 책 제목 (항상 표시)
+                    Text(book.title)
+                        .font(isIPad ? .largeTitle : .title2)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 20)
+                    
+                    // 상세 정보 (아이콘 + 정보)
+                    if showDetails {
+                        infoIconsView
+                            .transition(.move(edge: .top).combined(with: .opacity))
                     }
-                
-                // 책 제목 (항상 표시)
-                Text(book.title)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 20)
-                
-                // 상세 정보 (아이콘 + 정보)
-                if showDetails {
-                    infoIconsView
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                    
+                    // 액션 버튼 (상세 보기일 때만)
+                    if showDetails {
+                        actionButtonsView
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                 }
-                
-                // 액션 버튼 (상세 보기일 때만)
-                if showDetails {
-                    actionButtonsView
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
+                .padding(.horizontal, horizontalPadding)
+                .padding(.bottom, horizontalPadding)
+                .frame(minHeight: geometry.size.height)
             }
-            .padding(.horizontal, 32)
-            .padding(.bottom, 32)
+            .scrollIndicators(.hidden)
         }
     }
     
     // MARK: - Book Cover
     private var bookCoverView: some View {
         Group {
-            // 🔥 coverImageData로 변경
             if let imageData = book.coverImageData,
                let uiImage = UIImage(data: imageData) {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 240, height: 340)
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+                    .frame(width: coverSize.width, height: coverSize.height)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: isIPad ? 24 : 20))
+                    .shadow(color: .black.opacity(0.3), radius: isIPad ? 30 : 20, x: 0, y: isIPad ? 15 : 10)
             } else {
                 placeholderCover
             }
         }
+        .frame(maxWidth: .infinity)
     }
     
     private var placeholderCover: some View {
-        RoundedRectangle(cornerRadius: 20)
+        RoundedRectangle(cornerRadius: isIPad ? 24 : 20)
             .fill(
                 LinearGradient(
                     colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
@@ -215,45 +244,45 @@ struct BookCardView: View {
                     endPoint: .bottomTrailing
                 )
             )
-            .frame(width: 240, height: 340)
+            .frame(width: coverSize.width, height: coverSize.height)
             .overlay {
                 Image(systemName: "book.closed")
-                    .font(.system(size: 80))
+                    .font(.system(size: isIPad ? 120 : 80))
                     .foregroundStyle(.white.opacity(0.5))
             }
     }
     
     // MARK: - Info Icons
     private var infoIconsView: some View {
-        HStack(spacing: 28) {
+        HStack(spacing: isIPad ? 40 : 28) {
             
             // 작가
-            VStack(spacing: 6) {
+            VStack(spacing: isIPad ? 8 : 6) {
                 Image(systemName: "person.fill")
-                    .font(.title3)
+                    .font(isIPad ? .title2 : .title3)
                     .foregroundColor(.blue)
                 Text(book.author)
-                    .font(.caption)
+                    .font(isIPad ? .body : .caption)
                     .foregroundColor(.secondary)
             }
             
             // 페이지 정보
-            VStack(spacing: 6) {
+            VStack(spacing: isIPad ? 8 : 6) {
                 Image(systemName: "book.pages")
-                    .font(.title3)
+                    .font(isIPad ? .title2 : .title3)
                     .foregroundColor(.purple)
                 Text("\(book.currentPage)/\(book.totalPages)")
-                    .font(.caption)
+                    .font(isIPad ? .body : .caption)
                     .foregroundColor(.secondary)
             }
             
             // 총 시간
-            VStack(spacing: 6) {
+            VStack(spacing: isIPad ? 8 : 6) {
                 Image(systemName: "clock")
-                    .font(.title3)
+                    .font(isIPad ? .title2 : .title3)
                     .foregroundColor(.orange)
                 Text(totalReadingTime)
-                    .font(.caption)
+                    .font(isIPad ? .body : .caption)
                     .foregroundColor(.secondary)
             }
         }
@@ -262,21 +291,21 @@ struct BookCardView: View {
     
     // MARK: - Action Buttons View
     private var actionButtonsView: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: isIPad ? 32 : 20) {
             NavigationLink(destination: ReadingTimerView(book: book)) {
-                ActionButton(icon: "play.fill", title: "Read", color: .blue)
+                ActionButton(icon: "play.fill", title: "Read", color: .blue, isIPad: isIPad)
             }
             
             NavigationLink(destination: MemoTimelineView(book: book)) {
-                ActionButton(icon: "note.text", title: "Memos", color: .orange)
+                ActionButton(icon: "note.text", title: "Memos", color: .orange, isIPad: isIPad)
             }
             
             Button { onDelete() } label: {
-                ActionButton(icon: "trash", title: "Delete", color: .red)
+                ActionButton(icon: "trash", title: "Delete", color: .red, isIPad: isIPad)
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 16)
+        .padding(.top, isIPad ? 24 : 16)
     }
     
     // MARK: - Computed Properties
@@ -300,20 +329,25 @@ struct ActionButton: View {
     let icon: String
     let title: String
     let color: Color
+    let isIPad: Bool
+    
+    private var buttonSize: CGFloat {
+        isIPad ? 80 : 60
+    }
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: isIPad ? 12 : 8) {
             Image(systemName: icon)
-                .font(.title2)
+                .font(isIPad ? .title : .title2)
                 .foregroundStyle(color)
-                .frame(width: 60, height: 60)
+                .frame(width: buttonSize, height: buttonSize)
                 .background(
                     Circle()
                         .fill(color.opacity(0.15))
                 )
             
             Text(title)
-                .font(.caption)
+                .font(isIPad ? .body : .caption)
                 .fontWeight(.medium)
                 .foregroundColor(.primary)
         }

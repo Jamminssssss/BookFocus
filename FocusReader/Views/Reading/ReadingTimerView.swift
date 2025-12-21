@@ -6,6 +6,7 @@ import ActivityKit
 struct ReadingTimerView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     let book: Book
 
@@ -28,79 +29,90 @@ struct ReadingTimerView: View {
 
     // Audio / Live Activity
     @State private var activity: Activity<ReadingTimerAttributes>?
+    
+    // 디바이스별 크기
+    private var isIPad: Bool {
+        horizontalSizeClass == .regular
+    }
+    
+    private var coverHeight: CGFloat {
+        isIPad ? 400 : 260
+    }
 
     var body: some View {
         VStack {
             Spacer()
 
             // 책 정보
-            VStack(spacing: 10) {
-                // 🔥 coverImageData 사용
+            VStack(spacing: isIPad ? 16 : 10) {
                 if let imageData = book.coverImageData,
                    let uiImage = UIImage(data: imageData) {
 
                     Image(uiImage: uiImage)
                         .resizable()
                         .scaledToFit()
-                        .frame(height: 150)
-                        .cornerRadius(10)
+                        .frame(height: coverHeight)
+                        .cornerRadius(isIPad ? 16 : 10)
+                        .shadow(color: .black.opacity(0.2), radius: isIPad ? 15 : 10, x: 0, y: isIPad ? 8 : 5)
                 } else {
                     // 이미지 없는 경우 placeholder
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: isIPad ? 16 : 10)
                         .fill(Color.gray.opacity(0.3))
-                        .frame(height: 150)
+                        .frame(height: coverHeight)
                         .overlay(
                             Image(systemName: "book.closed")
-                                .font(.largeTitle)
+                                .font(.system(size: isIPad ? 60 : 40))
                                 .foregroundColor(.white.opacity(0.6))
                         )
                 }
 
                 Text(book.title)
-                    .font(.title2)
+                    .font(isIPad ? .largeTitle : .title2)
                     .fontWeight(.bold)
 
                 Text(book.author)
-                    .font(.subheadline)
+                    .font(isIPad ? .title3 : .subheadline)
                     .foregroundColor(.secondary)
             }
 
             // 타이머/페이지
-            VStack(spacing: 20) {
+            VStack(spacing: isIPad ? 28 : 20) {
                 if isTimerMode {
                     let remaining = max(0, TimeInterval(targetMinutes * 60) - elapsedTime)
                     Text(formatTime(remaining))
-                        .font(.system(size: 60, weight: .bold, design: .monospaced))
+                        .font(.system(size: isIPad ? 80 : 60, weight: .bold, design: .monospaced))
                         .foregroundColor(remaining < 60 ? .red : .primary)
                 } else {
                     Text(formatTime(elapsedTime))
-                        .font(.system(size: 60, weight: .bold, design: .monospaced))
+                        .font(.system(size: isIPad ? 80 : 60, weight: .bold, design: .monospaced))
                 }
 
                 Text("Current Page: \(book.currentPage) / \(book.totalPages)")
-                    .font(.headline)
+                    .font(isIPad ? .title3 : .headline)
             }
-            .padding(.vertical, 40)
+            .padding(.vertical, isIPad ? 60 : 40)
 
             // 컨트롤 버튼
-            HStack(spacing: 20) {
+            HStack(spacing: isIPad ? 32 : 20) {
                 Button(action: toggleTimer) {
                     Label(isRunning ? "Pause" : "Start",
                           systemImage: isRunning ? "pause.fill" : "play.fill")
+                        .font(isIPad ? .title3 : .body)
                         .foregroundColor(.white)
-                        .padding(.horizontal, 40)
-                        .padding(.vertical, 14)
+                        .padding(.horizontal, isIPad ? 50 : 40)
+                        .padding(.vertical, isIPad ? 18 : 14)
                         .background(isRunning ? Color.orange : Color.green)
-                        .cornerRadius(10)
+                        .cornerRadius(isIPad ? 14 : 10)
                 }
 
                 Button(action: stopTimer) {
                     Label("Stop", systemImage: "stop.fill")
+                        .font(isIPad ? .title3 : .body)
                         .foregroundColor(.white)
-                        .padding(.horizontal, 40)
-                        .padding(.vertical, 14)
+                        .padding(.horizontal, isIPad ? 50 : 40)
+                        .padding(.vertical, isIPad ? 18 : 14)
                         .background(Color.red)
-                        .cornerRadius(10)
+                        .cornerRadius(isIPad ? 14 : 10)
                 }
                 .disabled(!isRunning && currentSession == nil)
                 .opacity((!isRunning && currentSession == nil) ? 0.5 : 1)
@@ -108,13 +120,14 @@ struct ReadingTimerView: View {
 
             Spacer()
         }
-        .padding()
+        .padding(isIPad ? 32 : 16)
         .navigationTitle("Reading Timer")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button { showTimerPicker = true } label: {
                     Image(systemName: "timer")
+                        .font(isIPad ? .title2 : .body)
                 }
             }
         }
@@ -260,10 +273,8 @@ struct ReadingTimerView: View {
 
         let attributes = ReadingTimerAttributes(
             bookTitle: book.title,
-            bookCoverImageData: book.coverImageData,
             sessionStartTime: sessionStartTime
         )
-
 
         let contentState = ReadingTimerAttributes.ContentState(
             timerStartDate: activityStartDate,
@@ -285,8 +296,9 @@ struct ReadingTimerView: View {
                 content: content,
                 pushType: nil
             )
+            print("✅ Live Activity 시작 성공")
         } catch {
-            print("Live Activity error: \(error)")
+            print("❌ Live Activity 오류: \(error)")
         }
     }
 
@@ -330,7 +342,12 @@ struct TimerPickerView: View {
     @Binding var minutes: Int
     @Binding var isTimerMode: Bool
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var selectedMinutes: Int
+    
+    private var isIPad: Bool {
+        horizontalSizeClass == .regular
+    }
     
     init(minutes: Binding<Int>, isTimerMode: Binding<Bool>) {
         self._minutes = minutes
@@ -347,34 +364,34 @@ struct TimerPickerView: View {
                 VStack(spacing: 0) {
                     Spacer()
                     
-                    VStack(spacing: 12) {
+                    VStack(spacing: isIPad ? 16 : 12) {
                         Image(systemName: "timer")
-                            .font(.system(size: 60))
+                            .font(.system(size: isIPad ? 80 : 60))
                             .foregroundColor(.blue)
                         
                         Text("Set Reading Timer")
-                            .font(.system(size: 32, weight: .bold))
+                            .font(.system(size: isIPad ? 40 : 32, weight: .bold))
                         
                         Text("Choose how long you want to read")
-                            .font(.subheadline)
+                            .font(isIPad ? .title3 : .subheadline)
                             .foregroundColor(.secondary)
                     }
-                    .padding(.bottom, 50)
+                    .padding(.bottom, isIPad ? 70 : 50)
                     
                     Picker("Minutes", selection: $selectedMinutes) {
                         ForEach([1, 5, 10, 15, 20, 25, 30, 45, 60, 90, 120], id: \.self) { min in
                             Text("\(min)").tag(min)
-                                .font(.system(size: 24, weight: .semibold))
+                                .font(.system(size: isIPad ? 32 : 24, weight: .semibold))
                         }
                     }
                     .pickerStyle(.wheel)
-                    .frame(height: 180)
-                    .padding(.horizontal, 40)
+                    .frame(height: isIPad ? 220 : 180)
+                    .padding(.horizontal, isIPad ? 60 : 40)
                     
                     Text("minutes")
-                        .font(.title2)
+                        .font(isIPad ? .largeTitle : .title2)
                         .foregroundColor(.secondary)
-                        .padding(.top, 8)
+                        .padding(.top, isIPad ? 12 : 8)
                     
                     Spacer()
                     
@@ -383,20 +400,20 @@ struct TimerPickerView: View {
                         isTimerMode = true
                         dismiss()
                     }) {
-                        HStack {
+                        HStack(spacing: isIPad ? 12 : 8) {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.title3)
+                                .font(isIPad ? .title2 : .title3)
                             Text("Start Timer")
-                                .font(.headline)
+                                .font(isIPad ? .title3 : .headline)
                         }
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
+                        .padding(.vertical, isIPad ? 22 : 18)
                         .background(Color.blue)
-                        .cornerRadius(14)
+                        .cornerRadius(isIPad ? 16 : 14)
                     }
-                    .padding(.horizontal, 30)
-                    .padding(.bottom, 40)
+                    .padding(.horizontal, isIPad ? 50 : 30)
+                    .padding(.bottom, isIPad ? 60 : 40)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -406,7 +423,7 @@ struct TimerPickerView: View {
                         dismiss()
                     }) {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
+                            .font(isIPad ? .title2 : .title3)
                             .foregroundColor(.gray)
                     }
                 }
