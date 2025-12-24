@@ -10,17 +10,18 @@ import SwiftData
 
 @Model
 final class ReadingSession {
-    var id: UUID = UUID()  // 🔥 기본값 추가
-    var startTime: Date = Date()  // 🔥 기본값 추가
-    var endTime: Date?  // 이미 옵셔널
-    var startPage: Int = 0  // 🔥 기본값 추가
-    var endPage: Int?  // 이미 옵셔널
-    var duration: TimeInterval = 0  // 🔥 기본값 추가
-    var lastUpdated: Date = Date()  // 🔥 기본값 추가
+    var id: UUID = UUID()
+    var startTime: Date = Date()
+    var endTime: Date?
+    var startPage: Int = 0
+    var endPage: Int?
+    var duration: TimeInterval = 0
+    var lastUpdated: Date = Date()
     
     @Relationship(inverse: \Book.sessions) var book: Book?
     
-    init(startTime: Date, startPage: Int, book: Book) {
+    // 🔥 기본 생성자 (book 없이 임시 세션 생성용)
+    init(startTime: Date, startPage: Int) {
         self.id = UUID()
         self.startTime = startTime
         self.startPage = startPage
@@ -28,6 +29,12 @@ final class ReadingSession {
         self.endPage = nil
         self.duration = 0
         self.lastUpdated = Date()
+        self.book = nil  // 나중에 설정
+    }
+    
+    // 🔥 편의 생성자 (기존 호환성 유지)
+    convenience init(startTime: Date, startPage: Int, book: Book) {
+        self.init(startTime: startTime, startPage: startPage)
         self.book = book
     }
     
@@ -46,7 +53,7 @@ final class ReadingSession {
         book?.updateTotalReadingTime()
     }
     
-    // 🔥 진행 중인 세션의 시간 업데이트
+    // 진행 중인 세션의 시간 업데이트
     func updateDuration() {
         if endTime == nil {
             self.duration = Date().timeIntervalSince(self.startTime)
@@ -54,14 +61,14 @@ final class ReadingSession {
         }
     }
     
-    // 🔥 수동으로 시간 조정
+    // 수동으로 시간 조정
     func adjustDuration(_ newDuration: TimeInterval) {
         self.duration = newDuration
         self.lastUpdated = Date()
         book?.updateTotalReadingTime()
     }
     
-    // 🔥 세션 정보 수정
+    // 세션 정보 수정
     func update(startPage: Int? = nil, endPage: Int? = nil, startTime: Date? = nil, endTime: Date? = nil) {
         if let startPage = startPage {
             self.startPage = startPage

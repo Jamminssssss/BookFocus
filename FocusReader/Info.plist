@@ -1,42 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-    <!-- Background Modes -->
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>remote-notification</string>
-    </array>
-    
-    <!-- Live Activities 지원 -->
-    <key>NSSupportsLiveActivities</key>
-    <true/>
-    
-    <!-- Live Activities 빈번한 업데이트 허용 -->
-    <key>NSSupportsLiveActivitiesFrequentUpdates</key>
-    <true/>
-    
-    <!-- 앱스토어 제출 시 암호화 설정 (필수) -->
-    <key>ITSAppUsesNonExemptEncryption</key>
-    <false/>
-    
-    <!-- 앱 이름 -->
-    <key>CFBundleDisplayName</key>
-    <string>BookFocus</string>
-    
-    <!-- 버전 정보 (변수로 관리) -->
-     <key>CFBundleShortVersionString</key>
-     <string>$(MARKETING_VERSION)</string>
-     <key>CFBundleVersion</key>
-     <string>$(CURRENT_PROJECT_VERSION)</string>
-     
-    <!-- 사진 라이브러리 접근 권한 설명 -->
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>FocusReader needs access to your photo library to let you choose and add book cover images to your reading collection.</string>
+    <dict>
+        <!-- Background Modes -->
+        <key>UIBackgroundModes</key>
+        <array>
+            <string>remote-notification</string>
+        </array>
 
-    <!-- 카메라 접근 권한 설명 (책 표지 촬영 시) -->
-    <key>NSCameraUsageDescription</key>
-    <string>FocusReader needs access to your camera to let you take photos of book covers for your reading collection.</string>
+        <!-- Live Activities -->
+        <key>NSSupportsLiveActivities</key>
+        <true/>
+        <key>NSSupportsLiveActivitiesFrequentUpdates</key>
+        <true/>
 
-</dict>
+        <!-- Encryption -->
+        <key>ITSAppUsesNonExemptEncryption</key>
+        <false/>
+
+        <!-- App Name -->
+        <key>CFBundleDisplayName</key>
+        <string>BookFocus</string>
+
+        <!-- Version -->
+        <key>CFBundleShortVersionString</key>
+        <string>$(MARKETING_VERSION)</string>
+        <key>CFBundleVersion</key>
+        <string>$(CURRENT_PROJECT_VERSION)</string>
+
+        <!-- URL Scheme -->
+        <key>CFBundleURLTypes</key>
+        <array>
+            <dict>
+                <key>CFBundleTypeRole</key>
+                <string>Editor</string>
+                <key>CFBundleURLName</key>
+                <string>com.Jaemin.FocusReader</string>
+                <key>CFBundleURLSchemes</key>
+                <array>
+                    <string>focusreader</string>
+                </array>
+            </dict>
+        </array>
+
+        <!-- Permissions -->
+        <key>NSPhotoLibraryUsageDescription</key>
+        <string>FocusReader needs access to your photo library to let you choose and add book cover images.</string>
+        <key>NSCameraUsageDescription</key>
+        <string>FocusReader needs access to your camera to take photos of book covers.</string>
+
+        <!-- 🔥 필수 추가 -->
+        <key>UIApplicationSceneManifest</key>
+        <dict>
+            <key>UIApplicationSupportsMultipleScenes</key>
+            <false/>
+        </dict>
+    </dict>
+
 </plist>

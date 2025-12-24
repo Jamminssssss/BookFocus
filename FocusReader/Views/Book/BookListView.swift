@@ -1,32 +1,21 @@
-//
-//  BookListView.swift
-//  FocusReader
-//
-//  Created by JeaminPark on 12/10/25.
-//
-
 import SwiftUI
 import SwiftData
 
+// MARK: - Book List View
 struct BookListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Book.createdAt, order: .reverse) private var books: [Book]
     
-    @State private var showAddBook: Bool = false
-    @State private var currentIndex: Int = 0
-    @State private var showDetails: Bool = false
+    @State private var showAddBook = false
+    @State private var currentIndex = 0
+    @State private var showDetails = false
     
-    // iPad 감지
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    
-    private var isIPad: Bool {
-        horizontalSizeClass == .regular
-    }
+    private var isIPad: Bool { horizontalSizeClass == .regular }
     
     var body: some View {
         NavigationStack {
             ZStack {
-                // 배경 그라데이션
                 LinearGradient(
                     colors: [
                         Color(.systemBackground),
@@ -41,7 +30,6 @@ struct BookListView: View {
                     emptyStateView
                 } else {
                     VStack(spacing: 0) {
-                        // 캐러셀
                         TabView(selection: $currentIndex) {
                             ForEach(Array(books.enumerated()), id: \.element.id) { index, book in
                                 BookCardView(
@@ -54,16 +42,11 @@ struct BookListView: View {
                             }
                         }
                         .tabViewStyle(.page(indexDisplayMode: books.count > 1 ? .automatic : .never))
-                        .indexViewStyle(.page(backgroundDisplayMode: .always))
-                        .onChange(of: currentIndex) { oldValue, newValue in
-                            // 페이지가 변경되면 상세보기 숨김
+                        .onChange(of: currentIndex) { _, _ in
                             showDetails = false
                         }
                         
-                        // 하단 정보 영역
-                        if !books.isEmpty {
-                            bottomInfoView
-                        }
+                        bottomInfoView
                     }
                 }
             }
@@ -78,7 +61,7 @@ struct BookListView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showAddBook) {
+            .fullScreenCover(isPresented: $showAddBook) {
                 AddBookView()
             }
         }
@@ -91,60 +74,35 @@ struct BookListView: View {
                 .font(.system(size: isIPad ? 120 : 80))
                 .foregroundStyle(.blue.opacity(0.5))
             
-            Text("No Books Yet")
+            Text("empty_no_books_title")
                 .font(isIPad ? .largeTitle : .title)
                 .fontWeight(.bold)
             
-            Text("Start your reading journey by adding a book")
-                .font(isIPad ? .title3 : .body)
+            Text("empty_no_books_subtitle")
                 .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
         }
         .padding(40)
     }
     
     // MARK: - Bottom Info
     private var bottomInfoView: some View {
-        VStack(spacing: 16) {
-            // 페이지 인디케이터
+        VStack {
             if books.count > 1 {
                 Text("\(currentIndex + 1) / \(books.count)")
-                    .font(isIPad ? .body : .caption)
+                    .font(.caption)
                     .foregroundColor(.secondary)
                     .padding(.top, 8)
             }
-            
-            // 빠른 액션 버튼 (상세보기 상태일 때만 표시)
-            if showDetails {
-                Spacer()
-                    .frame(height: 20)
-            }
         }
-        .background(
-            Color(.systemBackground)
-                .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: -5)
-        )
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: showDetails)
+        .background(Color(.systemBackground))
     }
     
     private func deleteBook(_ book: Book) {
         withAnimation {
-            // 관련 데이터 삭제
             book.sessions?.forEach { modelContext.delete($0) }
             book.memos?.forEach { modelContext.delete($0) }
-            
-            // 현재 인덱스 조정
-            if currentIndex >= books.count - 1 && currentIndex > 0 {
-                currentIndex -= 1
-            }
-            
             modelContext.delete(book)
-            
-            do {
-                try modelContext.save()
-            } catch {
-                print("Failed to delete book: \(error)")
-            }
+            try? modelContext.save()
         }
     }
 }
@@ -156,170 +114,364 @@ struct BookCardView: View {
     @Binding var showDetails: Bool
     let isIPad: Bool
     
-    // 디바이스별 크기 설정
+    @State private var showInfoOverlay = false
+    @State private var showRereadSheet = false
+    
+    private var isCompleted: Bool {
+        book.currentPage >= book.totalPages
+    }
+    
     private var coverSize: CGSize {
-        if isIPad {
-            return CGSize(width: 480, height: 680)  // iPad: 화면에 맞게 크게
-        } else {
-            return CGSize(width: 280, height: 400)  // iPhone: 기존보다 크게
-        }
-    }
-    
-    private var topPadding: CGFloat {
-        isIPad ? 60 : 40
-    }
-    
-    private var horizontalPadding: CGFloat {
-        isIPad ? 48 : 32
+        isIPad
+        ? CGSize(width: 480, height: 680)
+        : CGSize(width: 280, height: 400)
     }
     
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                VStack(spacing: isIPad ? 32 : 24) {
-                    
-                    // 책 표지
-                    bookCoverView
-                        .padding(.top, topPadding)
-                        .onTapGesture {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                showDetails.toggle()
-                            }
-                        }
-                    
-                    // 책 제목 (항상 표시)
-                    Text(book.title)
-                        .font(isIPad ? .largeTitle : .title2)
-                        .fontWeight(.bold)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .foregroundColor(.primary)
-                        .padding(.horizontal, 20)
-                    
-                    // 상세 정보 (아이콘 + 정보)
-                    if showDetails {
-                        infoIconsView
-                            .transition(.move(edge: .top).combined(with: .opacity))
+        GeometryReader { geo in
+            VStack {
+                Spacer()
+                
+                bookCoverWithOverlay
+                    .offset(y: showDetails ? -12 : 0)
+                    .scaleEffect(showDetails ? 1.03 : 1.0)
+                    .animation(
+                        .spring(response: 0.4, dampingFraction: 0.85),
+                        value: showDetails
+                    )
+                    .onTapGesture {
+                        handleTap()
                     }
-                    
-                    // 액션 버튼 (상세 보기일 때만)
-                    if showDetails {
-                        actionButtonsView
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
+                
+                if showDetails {
+                    actionButtonsView
+                        .padding(.top, isIPad ? 32 : 24)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
-                .padding(.horizontal, horizontalPadding)
-                .padding(.bottom, horizontalPadding)
-                .frame(minHeight: geometry.size.height)
+                
+                Spacer()
             }
-            .scrollIndicators(.hidden)
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .sheet(isPresented: $showRereadSheet) {
+            RereadStartPageSheet(book: book, isPresented: $showRereadSheet)
         }
     }
     
-    // MARK: - Book Cover
-    private var bookCoverView: some View {
+    // MARK: - Tap Logic
+    private func handleTap() {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            showDetails.toggle()
+            showInfoOverlay = showDetails
+        }
+    }
+    
+    // MARK: - Book Cover + Overlay
+    private var bookCoverWithOverlay: some View {
+        ZStack {
+            coverImage
+                .drawingGroup()
+            
+            if isCompleted && !showDetails {
+                completedOverlay
+            }
+            
+            infoOverlay
+                .opacity(showInfoOverlay ? 1 : 0)
+                .allowsHitTesting(showInfoOverlay)
+        }
+        .frame(width: coverSize.width, height: coverSize.height)
+    }
+    
+    private var coverImage: some View {
         Group {
-            if let imageData = book.coverImageData,
-               let uiImage = UIImage(data: imageData) {
+            if let data = book.coverImageData,
+               let uiImage = UIImage(data: data) {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: coverSize.width, height: coverSize.height)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: isIPad ? 24 : 20))
-                    .shadow(color: .black.opacity(0.3), radius: isIPad ? 30 : 20, x: 0, y: isIPad ? 15 : 10)
             } else {
-                placeholderCover
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(
+                        LinearGradient(
+                            colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay {
+                        Image(systemName: "book.closed")
+                            .font(.system(size: isIPad ? 120 : 80))
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
             }
         }
-        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .shadow(
+            color: .black.opacity(showDetails ? 0.2 : 0.3),
+            radius: showDetails ? 12 : 20,
+            y: showDetails ? 6 : 10
+        )
     }
     
-    private var placeholderCover: some View {
-        RoundedRectangle(cornerRadius: isIPad ? 24 : 20)
-            .fill(
-                LinearGradient(
-                    colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .frame(width: coverSize.width, height: coverSize.height)
+    // MARK: - Info Overlay
+    private var infoOverlay: some View {
+        RoundedRectangle(cornerRadius: 20)
+            .fill(Color.black.opacity(0.8))
             .overlay {
-                Image(systemName: "book.closed")
-                    .font(.system(size: isIPad ? 120 : 80))
-                    .foregroundStyle(.white.opacity(0.5))
+                VStack(spacing: 18) {
+                    // Title
+                    HStack(spacing: 8) {
+                        Image(systemName: "book.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.white.opacity(0.9))
+                        
+                        Text(book.title)
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                    }
+                    
+                    // Author
+                    HStack(spacing: 8) {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                        
+                        Text(book.author)
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    
+                    Divider()
+                        .background(Color.white.opacity(0.3))
+                        .padding(.horizontal, 20)
+                    
+                    // Pages
+                    HStack(spacing: 8) {
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                        
+                        Text(pageText)
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    
+                    // Reading Time
+                    HStack(spacing: 8) {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                        
+                        Text(totalReadingTime)
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+                .padding(24)
             }
     }
     
-    // MARK: - Info Icons
-    private var infoIconsView: some View {
-        HStack(spacing: isIPad ? 40 : 28) {
-            
-            // 작가
-            VStack(spacing: isIPad ? 8 : 6) {
-                Image(systemName: "person.fill")
-                    .font(isIPad ? .title2 : .title3)
-                    .foregroundColor(.blue)
-                Text(book.author)
-                    .font(isIPad ? .body : .caption)
-                    .foregroundColor(.secondary)
+    // MARK: - Completed Overlay
+    private var completedOverlay: some View {
+        RoundedRectangle(cornerRadius: 20)
+            .fill(Color.green.opacity(0.3))
+            .overlay {
+                Text("finished")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
             }
-            
-            // 페이지 정보
-            VStack(spacing: isIPad ? 8 : 6) {
-                Image(systemName: "book.pages")
-                    .font(isIPad ? .title2 : .title3)
-                    .foregroundColor(.purple)
-                Text("\(book.currentPage)/\(book.totalPages)")
-                    .font(isIPad ? .body : .caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            // 총 시간
-            VStack(spacing: isIPad ? 8 : 6) {
-                Image(systemName: "clock")
-                    .font(isIPad ? .title2 : .title3)
-                    .foregroundColor(.orange)
-                Text(totalReadingTime)
-                    .font(isIPad ? .body : .caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding(.top, 8)
     }
     
-    // MARK: - Action Buttons View
+    // MARK: - Action Buttons
     private var actionButtonsView: some View {
-        HStack(spacing: isIPad ? 32 : 20) {
-            NavigationLink(destination: ReadingTimerView(book: book)) {
-                ActionButton(icon: "play.fill", title: "Read", color: .blue, isIPad: isIPad)
+        HStack(spacing: 14) {
+            if isCompleted {
+                Button {
+                    showRereadSheet = true
+                } label: {
+                    ActionButton(
+                        icon: "arrow.clockwise",
+                        title: "action_reread",
+                        role: nil,
+                        isIPad: isIPad
+                    )
+                }
+            } else {
+                NavigationLink(destination: ReadingTimerView(book: book)) {
+                    ActionButton(
+                        icon: "play.fill",
+                        title: "action_read",
+                        role: nil,
+                        isIPad: isIPad
+                    )
+                }
             }
             
             NavigationLink(destination: MemoTimelineView(book: book)) {
-                ActionButton(icon: "note.text", title: "Memos", color: .orange, isIPad: isIPad)
+                ActionButton(
+                    icon: "square.and.pencil",
+                    title: "action_memos",
+                    role: nil,
+                    isIPad: isIPad
+                )
             }
             
-            Button { onDelete() } label: {
-                ActionButton(icon: "trash", title: "Delete", color: .red, isIPad: isIPad)
+            Button(role: .destructive, action: onDelete) {
+                ActionButton(
+                    icon: "trash",
+                    title: "action_delete",
+                    role: .destructive,
+                    isIPad: isIPad
+                )
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, isIPad ? 24 : 16)
     }
     
-    // MARK: - Computed Properties
-    private var totalReadingTime: String {
-        guard let sessions = book.sessions else { return "0m" }
-        let totalSeconds = sessions.reduce(0) { $0 + $1.duration }
-
-        let hours = Int(totalSeconds / 3600)
-        let minutes = Int((totalSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
+    // MARK: - Computed Properties (로컬라이징)
+    // MARK: - Computed Properties (수정된 버전)
+    private var pageText: String {
+        let currentPages = book.currentPage
+        let totalPages = book.totalPages
+        let pageUnitKey = totalPages == 1 ? "page_singular" : "page_plural"
+        let pageUnit = NSLocalizedString(pageUnitKey, comment: "Page unit")
         
+        // 수정: String(format:) 사용
+        return String(format: "%d / %d %@", currentPages, totalPages, pageUnit)
+    }
+    
+    private var totalReadingTime: String {
+        guard let sessions = book.sessions else { return formatTime(minutes: 0) }
+        let totalSeconds = sessions.reduce(0) { $0 + $1.duration }
+        let totalMinutes = Int(totalSeconds / 60)
+        return formatTime(minutes: totalMinutes)
+    }
+    
+    private func formatTime(minutes: Int) -> String {
+        let hours = minutes / 60
+        let mins = minutes % 60
+        
+        let hourUnit = NSLocalizedString(hours == 1 ? "hour_singular" : "hour_plural", comment: "Hour unit")
+        let minUnit = NSLocalizedString(mins == 1 ? "minute_singular" : "minute_plural", comment: "Minute unit")
+        
+        // 수정: String(format:) 사용
         if hours > 0 {
-            return "\(hours)h \(minutes)m"
+            if mins > 0 {
+                return String(format: "%d%@ %d%@", hours, hourUnit, mins, minUnit)
+            } else {
+                return String(format: "%d%@", hours, hourUnit)
+            }
         } else {
-            return "\(minutes)m"
+            return String(format: "%d%@", mins, minUnit)
+        }
+    }
+}
+
+// MARK: - Reread Start Page Sheet
+struct RereadStartPageSheet: View {
+    let book: Book
+    @Binding var isPresented: Bool
+    
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    
+    @State private var startPage: Int = 1
+    @State private var navigateToTimer = false
+    
+    private var isIPad: Bool { horizontalSizeClass == .regular }
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 30) {
+                    Spacer()
+                    
+                    Image(systemName: "arrow.clockwise.circle.fill")
+                        .font(.system(size: isIPad ? 80 : 60))
+                        .foregroundStyle(.blue)
+                    
+                    VStack(spacing: 12) {
+                        Text("reread_title")
+                            .font(isIPad ? .largeTitle : .title)
+                            .fontWeight(.bold)
+                        
+                        Text("reread_subtitle")
+                            .font(isIPad ? .title3 : .body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    
+                    VStack(spacing: 16) {
+                        HStack {
+                            Text("start_page_label")
+                                .font(.headline)
+                            Spacer()
+                            Text("\(startPage)")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.blue)
+                        }
+                        .padding(.horizontal, 24)
+                        
+                        Picker("start_page_picker", selection: $startPage) {
+                            ForEach(1...book.totalPages, id: \.self) { page in
+                                Text("\(page)").tag(page)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(height: 150)
+                    }
+                    .padding(.vertical, 20)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(16)
+                    .padding(.horizontal, 20)
+                    
+                    Spacer()
+                    
+                    Button {
+                        startReading()
+                    } label: {
+                        HStack {
+                            Image(systemName: "play.fill")
+                            Text("start_reading")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("cancel") { isPresented = false }
+                }
+            }
+            .navigationDestination(isPresented: $navigateToTimer) {
+                ReadingTimerView(book: book)
+            }
+        }
+    }
+    
+    private func startReading() {
+        book.currentPage = startPage
+        try? modelContext.save()
+        
+        isPresented = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            navigateToTimer = true
         }
     }
 }
@@ -327,29 +479,36 @@ struct BookCardView: View {
 // MARK: - Action Button
 struct ActionButton: View {
     let icon: String
-    let title: String
-    let color: Color
+    let title: LocalizedStringKey
+    let role: ButtonRole?
     let isIPad: Bool
     
-    private var buttonSize: CGFloat {
-        isIPad ? 80 : 60
-    }
-    
     var body: some View {
-        VStack(spacing: isIPad ? 12 : 8) {
+        HStack(spacing: 10) {
             Image(systemName: icon)
-                .font(isIPad ? .title : .title2)
-                .foregroundStyle(color)
-                .frame(width: buttonSize, height: buttonSize)
-                .background(
-                    Circle()
-                        .fill(color.opacity(0.15))
-                )
+                .font(.system(size: isIPad ? 20 : 18, weight: .semibold))
             
             Text(title)
-                .font(isIPad ? .body : .caption)
-                .fontWeight(.medium)
-                .foregroundColor(.primary)
+                .font(.system(size: isIPad ? 15 : 13, weight: .semibold))
+        }
+        .foregroundStyle(foregroundColor)
+        .padding(.horizontal, isIPad ? 20 : 16)
+        .padding(.vertical, isIPad ? 14 : 12)
+        .background(backgroundColor)
+        .clipShape(Capsule())
+    }
+    
+    private var foregroundColor: Color {
+        switch role {
+        case .destructive: return .red
+        default: return .primary
+        }
+    }
+    
+    private var backgroundColor: Color {
+        switch role {
+        case .destructive: return Color.red.opacity(0.12)
+        default: return Color.primary.opacity(0.06)
         }
     }
 }

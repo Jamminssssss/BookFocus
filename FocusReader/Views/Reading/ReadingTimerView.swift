@@ -15,7 +15,7 @@ struct ReadingTimerView: View {
     @State private var elapsedTime: TimeInterval = 0
     @State private var timer: Timer?
     @State private var isRunning: Bool = false
-    @State private var currentSession: ReadingSession? // 임시 세션
+    @State private var currentSession: ReadingSession? // 임시 세션 (SwiftData에 insert 안 됨)
     @State private var showEndPageInput: Bool = false
 
     // ⏱ Timer mode
@@ -131,22 +131,26 @@ struct ReadingTimerView: View {
                 }
             }
         }
-        .sheet(isPresented: $showEndPageInput) {
+        .fullScreenCover(isPresented: $showEndPageInput) {
             EndPageInputView(book: book, session: currentSession) {
-                // Save 버튼 눌렀을 때만 CoreData에 저장
+                // ✅ Save 버튼 눌렀을 때만 SwiftData에 저장
                 if let session = currentSession {
+                    // Book 헬퍼 메서드 사용 (자동으로 book 연결 + totalReadingTime 업데이트)
+                    book.addSession(session)
                     modelContext.insert(session)
-                    if book.sessions == nil {
-                        book.sessions = []
-                    }
-                    book.sessions?.append(session)
                     try? modelContext.save()
+                    
+                    print("✅ 세션 저장 완료: \(session.duration)초")
                 }
                 currentSession = nil
                 dismiss()
+            } onCancel: {
+                // ✅ Cancel 버튼 눌렀을 때 - 세션 버리기
+                print("❌ 세션 취소됨 - 저장하지 않음")
+                cancelSession()
             }
         }
-        .sheet(isPresented: $showTimerPicker) {
+        .fullScreenCover(isPresented: $showTimerPicker) {
             TimerPickerView(minutes: $targetMinutes, isTimerMode: $isTimerMode)
         }
         .alert("Timer Complete!", isPresented: $showTimerAlert) {
@@ -170,12 +174,13 @@ struct ReadingTimerView: View {
 
     private func startTimer() {
         let now = Date()
-        // 임시 세션 생성 (CoreData insert X, book.sessions append X)
-        currentSession = ReadingSession(
+        
+        // ✅ 임시 세션 생성 (book 없이 생성 - SwiftData context와 완전히 분리)
+        let newSession = ReadingSession(
             startTime: now,
-            startPage: book.currentPage,
-            book: book
+            startPage: book.currentPage
         )
+        currentSession = newSession
 
         sessionStartTime = now
         pausedElapsedTime = 0
@@ -188,6 +193,8 @@ struct ReadingTimerView: View {
 
         startLiveActivity()
         startUITimer()
+        
+        print("🚀 타이머 시작: 임시 세션 생성됨 (SwiftData에 아직 저장 안 됨)")
     }
 
     private func resumeTimer() {
@@ -217,6 +224,7 @@ struct ReadingTimerView: View {
         isRunning = false
         timer?.invalidate()
 
+        // ✅ 임시 세션의 duration만 업데이트 (아직 저장 안 됨)
         if let session = currentSession {
             session.duration = finalElapsed
         }
@@ -226,9 +234,15 @@ struct ReadingTimerView: View {
     }
 
     private func cancelSession() {
-        // Cancel 시 CoreData에 절대 insert하지 않고 임시 세션만 삭제
+        // ✅ Cancel 시 임시 세션 완전히 버리기
+        // SwiftData에 insert된 적이 없으므로 nil로만 설정하면 됨
+        print("🗑️ 세션 취소: duration=\(currentSession?.duration ?? 0)초 (저장 안 함)")
+        
         currentSession = nil
         resetAfterCompletion()
+        
+        // ✅ 혹시 모를 상황 대비 context rollback
+        modelContext.rollback()
     }
 
     private func startUITimer() {
@@ -249,6 +263,7 @@ struct ReadingTimerView: View {
         pausedElapsedTime = TimeInterval(targetMinutes * 60)
         elapsedTime = pausedElapsedTime
 
+        // ✅ 임시 세션의 duration만 업데이트 (아직 저장 안 됨)
         if let session = currentSession {
             session.duration = pausedElapsedTime
         }

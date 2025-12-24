@@ -5,10 +5,12 @@ import PhotosUI
 
 struct EndPageInputView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     
     let book: Book
     let session: ReadingSession?
-    let onComplete: () -> Void
+    let onSave: () -> Void  // ✅ Save 시 호출
+    let onCancel: () -> Void  // ✅ Cancel 시 호출
     
     @State private var endPage: String = ""
     @State private var memo: String = ""
@@ -113,11 +115,17 @@ struct EndPageInputView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { onComplete() }
+                    Button("Cancel") {
+                        // ✅ Cancel 시 아무것도 저장하지 않고 onCancel 호출
+                        dismiss()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { saveSession() }
-                        .disabled(endPage.isEmpty)
+                    Button("Save") {
+                        saveSession()
+                    }
+                    .disabled(endPage.isEmpty)
                 }
             }
             .alert("Error", isPresented: $showError) {
@@ -151,26 +159,27 @@ struct EndPageInputView: View {
             showError = true
             return
         }
-        guard endPageInt >= book.currentPage else {
-            errorMessage = "End page must be greater than or equal to start page."
+        guard endPageInt >= startPage else {
+            errorMessage = "End page must be greater than or equal to start page (\(startPage))."
             showError = true
             return
         }
         guard endPageInt <= book.totalPages else {
-            errorMessage = "End page cannot exceed total pages."
+            errorMessage = "End page cannot exceed total pages (\(book.totalPages))."
             showError = true
             return
         }
         
+        // ✅ 세션 종료 처리 (endPage 설정)
         if let session = session {
-            _ = session.duration
             session.endSession(endPage: endPageInt)
         }
         
+        // ✅ Book 정보 업데이트
         book.currentPage = endPageInt
         book.checkCompletion()
-        book.updateTotalReadingTime()
         
+        // ✅ 메모 저장 (있는 경우에만)
         if !memo.isEmpty {
             let newMemo = PageMemo(startPage: startPage, endPage: endPageInt, memo: memo, book: book)
             var memos = book.memos ?? []
@@ -185,9 +194,12 @@ struct EndPageInputView: View {
             book.coverImageData = data
         }
         
-        try? modelContext.save()
+        // ✅ 캘린더 이벤트 추가
         addToCalendar(startPage: startPage, endPage: endPageInt)
-        onComplete()
+        
+        // ✅ Save 완료 후 onSave 호출 (ReadingTimerView에서 SwiftData 저장 처리)
+        dismiss()
+        onSave()
     }
     
     // MARK: - Calendar Handling
