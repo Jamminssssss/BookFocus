@@ -1,0 +1,31 @@
+{
+  "identifier" : "org.reactjs.native.example.Book",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "6738292719",
+      "localizations" : [
+        {
+          "description" : "Unlock unlimited books, memos, and advanced statistics",
+          "displayName" : "Premium Features",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "org.reactjs.native.example.Book.premium",
+      "referenceName" : "Premium",
+      "type" : "NonConsumable"
+    },
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6738292718",
+    "_developerTeamID" : "XXXXXXXXXX",
+    "_lastSynchronizedDate" : 760536330.54863906
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

@@ -9,18 +9,22 @@ struct EndPageInputView: View {
     
     let book: Book
     let session: ReadingSession?
-    let onSave: () -> Void  // ✅ Save 시 호출
-    let onCancel: () -> Void  // ✅ Cancel 시 호출
+    let onSave: () -> Void
+    let onCancel: () -> Void
+    
+    // 🔑 StoreKit
+    @StateObject private var storeManager = StoreKitManager.shared
+    @State private var showPurchaseSheet = false
     
     @State private var endPage: String = ""
     @State private var memo: String = ""
-    @State private var showError: Bool = false
-    @State private var errorMessage: String = ""
+    @State private var showError = false
+    @State private var errorMessage = ""
     
-    // 이미지 관련 상태
+    // 이미지
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var selectedImage: UIImage?
-    @State private var tempImage: UIImage? // 임시 이미지
+    @State private var tempImage: UIImage?
     @State private var showCamera = false
     
     private let eventStore = EKEventStore()
@@ -29,194 +33,242 @@ struct EndPageInputView: View {
         session?.startPage ?? book.currentPage
     }
     
+    // 🔒 메모 사용 가능 여부 (프리미엄만 허용)
+    private var canUseMemo: Bool {
+        storeManager.isPremium
+    }
+    
     var body: some View {
-        NavigationStack {
-            Form {
-                // MARK: - Page Input
-                Section {
-                    Text("Start Page: \(startPage)")
-                    TextField("End Page", text: $endPage)
-                        .keyboardType(.numberPad)
-                } header: {
-                    Text("Page Input")
-                } footer: {
-                    Text("End page is required.")
-                }
-                
-                // MARK: - Book Information
-                Section {
-                    Text(book.title)
-                        .font(.headline)
-                    Text(book.author)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                } header: {
-                    Text("Book Information")
-                }
-                
-                // MARK: - Memo
-                Section {
-                    TextEditor(text: $memo)
-                        .frame(minHeight: 150)
-                } header: {
-                    Text("Memo")
-                } footer: {
-                    Text("Write your thoughts about pages \(startPage) - \(endPage.isEmpty ? "?" : endPage)")
-                }
-                
-                // MARK: - Book Cover
-                Section {
-                    VStack {
-                        if let uiImage = selectedImage {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 150)
-                                .cornerRadius(8)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                        } else if let data = book.coverImageData,
-                                  let uiImage = UIImage(data: data) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 150)
-                                .cornerRadius(8)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                        } else {
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.3))
-                                .frame(height: 150)
-                                .cornerRadius(8)
-                                .overlay(Text("No Image").foregroundColor(.gray))
-                                .frame(maxWidth: .infinity, alignment: .center)
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                // Top adaptive banner
+                AdaptiveTopBannerView()
+
+                NavigationStack {
+                    Form {
+                        // MARK: - Page Input
+                        Section {
+                            Text("Start Page: \(startPage)")
+                            TextField("End Page", text: $endPage)
+                                .keyboardType(.numberPad)
+                        } header: {
+                            Text("Page Input")
                         }
-                    }
-                    
-                    HStack(spacing: 16) {
-                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            Label("Gallery", systemImage: "photo")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
                         
-                        Button {
-                            showCamera = true
-                        } label: {
-                            Label("Camera", systemImage: "camera")
-                                .frame(maxWidth: .infinity)
+                        // MARK: - Book Info
+                        Section {
+                            Text(book.title).font(.headline)
+                            Text(book.author)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        } header: {
+                            Text("Book Information")
                         }
-                        .buttonStyle(.bordered)
+                        
+                        // MARK: - Memo (Premium Locked)
+                        Section {
+                            ZStack {
+                                TextEditor(text: $memo)
+                                    .frame(minHeight: 150)
+                                    .disabled(!canUseMemo)
+                                    .opacity(canUseMemo ? 1.0 : 0.2)
+                                
+                                if !canUseMemo {
+                                    VStack(spacing: 12) {
+                                        Image(systemName: "lock.fill")
+                                            .font(.title)
+                                            .foregroundColor(.secondary)
+                                        
+                                        Text("Premium Feature")
+                                            .font(.headline)
+                                        
+                                        Text("Buy Premium to write memos permanently")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        
+                                        Button {
+                                            showPurchaseSheet = true
+                                        } label: {
+                                            Text("Unlock with Premium")
+                                                .fontWeight(.semibold)
+                                        }
+                                        .buttonStyle(.borderedProminent)
+                                    }
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .background(Color.black.opacity(0.05))
+                                }
+                            }
+                        } header: {
+                            Text("Memo")
+                        } footer: {
+                            if !storeManager.isPremium {
+                                Text("Memos are available with Premium purchase.")
+                            }
+                        }
+                        
+                        // MARK: - Book Cover
+                        Section {
+                            VStack {
+                                if let uiImage = selectedImage {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(height: 150)
+                                        .cornerRadius(8)
+                                } else if let data = book.coverImageData,
+                                          let uiImage = UIImage(data: data) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(height: 150)
+                                        .cornerRadius(8)
+                                } else {
+                                    Rectangle()
+                                        .fill(Color.gray.opacity(0.3))
+                                        .frame(height: 150)
+                                        .cornerRadius(8)
+                                        .overlay(Text("No Image").foregroundColor(.gray))
+                                }
+                            }
+                            
+                            HStack {
+                                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                                    Label("Gallery", systemImage: "photo")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                                
+                                Button {
+                                    showCamera = true
+                                } label: {
+                                    Label("Camera", systemImage: "camera")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        } header: {
+                            Text("Book Cover")
+                        }
                     }
-                } header: {
-                    Text("Book Cover")
-                }
-            }
-            .navigationTitle("End Session")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        // ✅ Cancel 시 아무것도 저장하지 않고 onCancel 호출
-                        dismiss()
-                        onCancel()
+                    .navigationTitle("End Session")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") {
+                                dismiss()
+                                onCancel()
+                            }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Save") {
+                                saveSession()
+                            }
+                            .disabled(endPage.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
                     }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveSession()
+                    .alert("Error", isPresented: $showError) {
+                        Button("OK", role: .cancel) {}
+                    } message: {
+                        Text(errorMessage)
                     }
-                    .disabled(endPage.isEmpty)
-                }
-            }
-            .alert("Error", isPresented: $showError) {
-                Button("OK", role: .cancel) {}
-            } message: { Text(errorMessage) }
-            .sheet(isPresented: $showCamera) {
-                ImagePicker(image: $selectedImage, sourceType: .camera)
-                    .ignoresSafeArea()
-            }
-            .onChange(of: selectedPhoto) { oldValue, newValue in
-                Task {
-                    if let data = try? await newValue?.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data) {
-                        selectedImage = image
-                        tempImage = image
+                    .sheet(isPresented: $showCamera) {
+                        ImagePicker(image: $selectedImage, sourceType: .camera)
+                            .ignoresSafeArea()
                     }
-                }
-            }
-            .onChange(of: selectedImage) { oldValue, newValue in
-                if let image = newValue, oldValue != newValue {
-                    tempImage = image
+                    .sheet(isPresented: $showPurchaseSheet) {
+                        PurchaseView()
+                    }
+                    .onChange(of: selectedPhoto) { _, newValue in
+                        Task {
+                            if let data = try? await newValue?.loadTransferable(type: Data.self),
+                               let image = UIImage(data: data) {
+                                selectedImage = image
+                                tempImage = image
+                            }
+                        }
+                    }
+                    .onChange(of: selectedImage) { _, newValue in
+                        if let image = newValue {
+                            tempImage = image
+                        }
+                    }
+                    AdaptiveBottomBannerView()
                 }
             }
         }
     }
     
-    // MARK: - Session Saving
+    // MARK: - Save
     private func saveSession() {
-        guard let endPageInt = Int(endPage) else {
+        let trimmed = endPage.trimmingCharacters(in: .whitespaces)
+        guard let endPageInt = Int(trimmed) else {
             errorMessage = "Please enter a valid page number."
             showError = true
             return
         }
         guard endPageInt >= startPage else {
-            errorMessage = "End page must be greater than or equal to start page (\(startPage))."
+            errorMessage = "End page must be greater than or equal to start page."
             showError = true
             return
         }
         guard endPageInt <= book.totalPages else {
-            errorMessage = "End page cannot exceed total pages (\(book.totalPages))."
+            errorMessage = "End page cannot exceed total pages."
             showError = true
             return
         }
         
-        // ✅ 세션 종료 처리 (endPage 설정)
+        if !memo.isEmpty && !storeManager.isPremium {
+            errorMessage = "Premium is required to save memos."
+            showError = true
+            return
+        }
+        
         if let session = session {
             session.endSession(endPage: endPageInt)
         }
         
-        // ✅ Book 정보 업데이트
         book.currentPage = endPageInt
         book.checkCompletion()
         
-        // ✅ 메모 저장 (있는 경우에만)
         if !memo.isEmpty {
-            let newMemo = PageMemo(startPage: startPage, endPage: endPageInt, memo: memo, book: book)
+            let newMemo = PageMemo(
+                startPage: startPage,
+                endPage: endPageInt,
+                memo: memo,
+                book: book
+            )
             var memos = book.memos ?? []
             memos.append(newMemo)
             book.memos = memos
             modelContext.insert(newMemo)
         }
         
-        // ✅ 이미지 저장 (Save 버튼에서만)
-        if let imageToSave = tempImage,
-           let data = imageToSave.jpegData(compressionQuality: 0.8) {
+        if let image = tempImage,
+           let data = image.jpegData(compressionQuality: 0.8) {
             book.coverImageData = data
         }
         
-        // ✅ 캘린더 이벤트 추가
         addToCalendar(startPage: startPage, endPage: endPageInt)
         
-        // ✅ Save 완료 후 onSave 호출 (ReadingTimerView에서 SwiftData 저장 처리)
         dismiss()
         onSave()
     }
     
-    // MARK: - Calendar Handling
+    // MARK: - Calendar
     private func addToCalendar(startPage: Int, endPage: Int) {
         if #available(iOS 17.0, *) {
-            eventStore.requestWriteOnlyAccessToEvents { granted, error in
-                if granted && error == nil {
+            eventStore.requestWriteOnlyAccessToEvents { granted, _ in
+                if granted {
                     DispatchQueue.main.async {
-                        self.createCalendarEvent(startPage: startPage, endPage: endPage)
+                        createCalendarEvent(startPage: startPage, endPage: endPage)
                     }
                 }
             }
         } else {
-            eventStore.requestAccess(to: .event) { granted, error in
-                if granted && error == nil {
+            eventStore.requestAccess(to: .event) { granted, _ in
+                if granted {
                     DispatchQueue.main.async {
-                        self.createCalendarEvent(startPage: startPage, endPage: endPage)
+                        createCalendarEvent(startPage: startPage, endPage: endPage)
                     }
                 }
             }
@@ -231,38 +283,31 @@ struct EndPageInputView: View {
         let startOfDay = calendar.startOfDay(for: today)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
         
+        // 중복 이벤트 제거
         let predicate = eventStore.predicateForEvents(withStart: startOfDay, end: endOfDay, calendars: nil)
         let existingEvents = eventStore.events(matching: predicate)
-        
         let bookIdentifier = "\(book.title) - \(book.author)"
-        let bookEvents = existingEvents.filter { event in
-            if let title = event.title {
-                return title == bookIdentifier ||
-                       (title.contains(book.title) && title.contains(book.author))
+        
+        for event in existingEvents {
+            if event.title == bookIdentifier {
+                try? eventStore.remove(event, span: .thisEvent)
             }
-            return false
         }
         
-        for event in bookEvents {
-            try? eventStore.remove(event, span: .thisEvent)
-        }
-        
+        // 새 이벤트 생성
         let bookHash = abs(book.id.uuidString.hashValue)
         let hourOffset = bookHash % 12
         let minuteOffset = (bookHash / 12) % 60
-        
         let eventStartTime = calendar.date(byAdding: .hour, value: hourOffset, to: startOfDay)!
         let eventStartTimeWithMinutes = calendar.date(byAdding: .minute, value: minuteOffset, to: eventStartTime)!
         let eventEndTime = calendar.date(byAdding: .hour, value: 1, to: eventStartTimeWithMinutes)!
-        let pagesRead = endPage - startPage
         
         let event = EKEvent(eventStore: eventStore)
         event.title = bookIdentifier
-        event.notes = "Pages: \(startPage) - \(endPage) (\(pagesRead) pages read)\nCurrent Progress: \(endPage) / \(book.totalPages) pages"
+        event.notes = "Pages: \(startPage) - \(endPage) (\(endPage - startPage) pages read)"
         event.startDate = eventStartTimeWithMinutes
         event.endDate = eventEndTime
         event.calendar = eventStore.defaultCalendarForNewEvents
-        event.isAllDay = false
         try? eventStore.save(event, span: .thisEvent)
     }
 }

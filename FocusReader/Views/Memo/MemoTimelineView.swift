@@ -33,52 +33,58 @@ struct MemoTimelineView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
-                if allMemos.isEmpty {
-                    ContentUnavailableView(
-                        "No Memos",
-                        systemImage: "note.text",
-                        description: Text("No memos yet")
-                    )
-                } else {
-                    List {
-                        ForEach(allMemos) { memo in
-                            MemoCardView(
-                                memo: memo,
-                                onEdit: {
-                                    editingMemo = memo
-                                }
-                            )
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    deleteMemo(memo)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+            VStack(spacing: 0) {
+                AdaptiveTopBannerView()
+                Group {
+                    if allMemos.isEmpty {
+                        ContentUnavailableView(
+                            "No Memos",
+                            systemImage: "note.text",
+                            description: Text("No memos yet")
+                        )
+                    } else {
+                        List {
+                            ForEach(allMemos) { memo in
+                                MemoCardView(
+                                    memo: memo,
+                                    onEdit: {
+                                        editingMemo = memo
+                                    }
+                                )
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        deleteMemo(memo)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
                             }
                         }
+                        .listStyle(.plain)
                     }
-                    .listStyle(.plain)
                 }
-            }
-            .id(refreshID)
-            .navigationTitle("\(book.title) - Memos")
-            .navigationBarTitleDisplayMode(.inline)
-            .sheet(item: $editingMemo) { memo in
-                EditMemoView(memo: memo)
-            }
-            .onAppear {
-                print("MemoTimelineView appeared")
-                print("Book: \(book.title), ID: \(book.id)")
-                print("Memos count: \(allMemos.count)")
-            }
-            .task {
-                // task modifier는 뷰가 완전히 로드된 후 실행됨
-                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2초
-                refreshID = UUID()
-                print("After refresh - Memos count: \(allMemos.count)")
+                .id(refreshID)
+                .navigationTitle("\(book.title) - Memos")
+                .navigationBarTitleDisplayMode(.inline)
+                .sheet(item: $editingMemo) { memo in
+                    EditMemoView(memo: memo)
+                }
+                .onAppear {
+                    print("MemoTimelineView appeared")
+                    print("Book: \(book.title), ID: \(book.id)")
+                    print("Memos count: \(allMemos.count)")
+                }
+                .task {
+                    // task modifier는 뷰가 완전히 로드된 후 실행됨
+                    try? await Task.sleep(nanoseconds: 200_000_000) // 0.2초
+                    refreshID = UUID()
+                    print("After refresh - Memos count: \(allMemos.count)")
+                }
+
+                // Bottom banner
+                AdaptiveBottomBannerView()
             }
         }
     }
@@ -129,3 +135,4 @@ struct MemoCardView: View {
         .padding(.vertical, 4)
     }
 }
+

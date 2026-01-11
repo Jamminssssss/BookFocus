@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import AVFoundation
 import ActivityKit
+import AppIntents
 
 struct ReadingTimerView: View {
     @Environment(\.modelContext) private var modelContext
@@ -15,7 +16,7 @@ struct ReadingTimerView: View {
     @State private var elapsedTime: TimeInterval = 0
     @State private var timer: Timer?
     @State private var isRunning: Bool = false
-    @State private var currentSession: ReadingSession? // 임시 세션 (SwiftData에 insert 안 됨)
+    @State private var currentSession: ReadingSession?
     @State private var showEndPageInput: Bool = false
 
     // ⏱ Timer mode
@@ -30,6 +31,9 @@ struct ReadingTimerView: View {
     // Audio / Live Activity
     @State private var activity: Activity<ReadingTimerAttributes>?
     
+    // Widget State Manager
+    private let stateManager = TimerStateManager.shared
+    
     // 디바이스별 크기
     private var isIPad: Bool {
         horizontalSizeClass == .regular
@@ -40,87 +44,97 @@ struct ReadingTimerView: View {
     }
 
     var body: some View {
-        VStack {
-            Spacer()
+        VStack(spacing: 0) {
+            // 🎯 상단 배너
+            AdaptiveTopBannerView()
+            
+            // 메인 컨텐츠
+            ScrollView {
+                VStack {
+                    Spacer()
 
-            // 책 정보
-            VStack(spacing: isIPad ? 16 : 10) {
-                if let imageData = book.coverImageData,
-                   let uiImage = UIImage(data: imageData) {
+                    // 책 정보
+                    VStack(spacing: isIPad ? 16 : 10) {
+                        if let imageData = book.coverImageData,
+                           let uiImage = UIImage(data: imageData) {
 
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: coverHeight)
-                        .cornerRadius(isIPad ? 16 : 10)
-                        .shadow(color: .black.opacity(0.2), radius: isIPad ? 15 : 10, x: 0, y: isIPad ? 8 : 5)
-                } else {
-                    // 이미지 없는 경우 placeholder
-                    RoundedRectangle(cornerRadius: isIPad ? 16 : 10)
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(height: coverHeight)
-                        .overlay(
-                            Image(systemName: "book.closed")
-                                .font(.system(size: isIPad ? 60 : 40))
-                                .foregroundColor(.white.opacity(0.6))
-                        )
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: coverHeight)
+                                .cornerRadius(isIPad ? 16 : 10)
+                                .shadow(color: .black.opacity(0.2), radius: isIPad ? 15 : 10, x: 0, y: isIPad ? 8 : 5)
+                        } else {
+                            RoundedRectangle(cornerRadius: isIPad ? 16 : 10)
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(height: coverHeight)
+                                .overlay(
+                                    Image(systemName: "book.closed")
+                                        .font(.system(size: isIPad ? 60 : 40))
+                                        .foregroundColor(.white.opacity(0.6))
+                                )
+                        }
+
+                        Text(book.title)
+                            .font(isIPad ? .largeTitle : .title2)
+                            .fontWeight(.bold)
+
+                        Text(book.author)
+                            .font(isIPad ? .title3 : .subheadline)
+                            .foregroundColor(.secondary)
+                    }
+
+                    // 타이머/페이지
+                    VStack(spacing: isIPad ? 28 : 20) {
+                        if isTimerMode {
+                            let remaining = max(0, TimeInterval(targetMinutes * 60) - elapsedTime)
+                            Text(formatTime(remaining))
+                                .font(.system(size: isIPad ? 80 : 60, weight: .bold, design: .monospaced))
+                                .foregroundColor(remaining < 60 ? .red : .primary)
+                        } else {
+                            Text(formatTime(elapsedTime))
+                                .font(.system(size: isIPad ? 80 : 60, weight: .bold, design: .monospaced))
+                        }
+
+                        Text("Current Page: \(book.currentPage) / \(book.totalPages)")
+                            .font(isIPad ? .title3 : .headline)
+                    }
+                    .padding(.vertical, isIPad ? 60 : 40)
+
+                    // 컨트롤 버튼
+                    HStack(spacing: isIPad ? 32 : 20) {
+                        Button(action: toggleTimer) {
+                            Label(isRunning ? "Pause" : "Start",
+                                  systemImage: isRunning ? "pause.fill" : "play.fill")
+                                .font(isIPad ? .title3 : .body)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, isIPad ? 50 : 40)
+                                .padding(.vertical, isIPad ? 18 : 14)
+                                .background(isRunning ? Color.orange : Color.green)
+                                .cornerRadius(isIPad ? 14 : 10)
+                        }
+
+                        Button(action: stopTimer) {
+                            Label("Stop", systemImage: "stop.fill")
+                                .font(isIPad ? .title3 : .body)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, isIPad ? 50 : 40)
+                                .padding(.vertical, isIPad ? 18 : 14)
+                                .background(Color.red)
+                                .cornerRadius(isIPad ? 14 : 10)
+                        }
+                        .disabled(!isRunning && currentSession == nil)
+                        .opacity((!isRunning && currentSession == nil) ? 0.5 : 1)
+                    }
+
+                    Spacer()
                 }
-
-                Text(book.title)
-                    .font(isIPad ? .largeTitle : .title2)
-                    .fontWeight(.bold)
-
-                Text(book.author)
-                    .font(isIPad ? .title3 : .subheadline)
-                    .foregroundColor(.secondary)
+                .padding(isIPad ? 32 : 16)
             }
-
-            // 타이머/페이지
-            VStack(spacing: isIPad ? 28 : 20) {
-                if isTimerMode {
-                    let remaining = max(0, TimeInterval(targetMinutes * 60) - elapsedTime)
-                    Text(formatTime(remaining))
-                        .font(.system(size: isIPad ? 80 : 60, weight: .bold, design: .monospaced))
-                        .foregroundColor(remaining < 60 ? .red : .primary)
-                } else {
-                    Text(formatTime(elapsedTime))
-                        .font(.system(size: isIPad ? 80 : 60, weight: .bold, design: .monospaced))
-                }
-
-                Text("Current Page: \(book.currentPage) / \(book.totalPages)")
-                    .font(isIPad ? .title3 : .headline)
-            }
-            .padding(.vertical, isIPad ? 60 : 40)
-
-            // 컨트롤 버튼
-            HStack(spacing: isIPad ? 32 : 20) {
-                Button(action: toggleTimer) {
-                    Label(isRunning ? "Pause" : "Start",
-                          systemImage: isRunning ? "pause.fill" : "play.fill")
-                        .font(isIPad ? .title3 : .body)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, isIPad ? 50 : 40)
-                        .padding(.vertical, isIPad ? 18 : 14)
-                        .background(isRunning ? Color.orange : Color.green)
-                        .cornerRadius(isIPad ? 14 : 10)
-                }
-
-                Button(action: stopTimer) {
-                    Label("Stop", systemImage: "stop.fill")
-                        .font(isIPad ? .title3 : .body)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, isIPad ? 50 : 40)
-                        .padding(.vertical, isIPad ? 18 : 14)
-                        .background(Color.red)
-                        .cornerRadius(isIPad ? 14 : 10)
-                }
-                .disabled(!isRunning && currentSession == nil)
-                .opacity((!isRunning && currentSession == nil) ? 0.5 : 1)
-            }
-
-            Spacer()
+            
+            // 🎯 하단 배너
+            AdaptiveBottomBannerView()
         }
-        .padding(isIPad ? 32 : 16)
         .navigationTitle("Reading Timer")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -131,21 +145,19 @@ struct ReadingTimerView: View {
                 }
             }
         }
+        
         .fullScreenCover(isPresented: $showEndPageInput) {
             EndPageInputView(book: book, session: currentSession) {
-                // ✅ Save 버튼 눌렀을 때만 SwiftData에 저장
                 if let session = currentSession {
-                    // Book 헬퍼 메서드 사용 (자동으로 book 연결 + totalReadingTime 업데이트)
                     book.addSession(session)
                     modelContext.insert(session)
                     try? modelContext.save()
-                    
                     print("✅ 세션 저장 완료: \(session.duration)초")
                 }
                 currentSession = nil
+                clearWidgetState()
                 dismiss()
             } onCancel: {
-                // ✅ Cancel 버튼 눌렀을 때 - 세션 버리기
                 print("❌ 세션 취소됨 - 저장하지 않음")
                 cancelSession()
             }
@@ -159,10 +171,13 @@ struct ReadingTimerView: View {
         }
         .onAppear {
             endAllLiveActivities()
+            setupWidgetStateSync()
+            setupWidgetActionObserver()
         }
         .onDisappear {
             timer?.invalidate()
             endLiveActivity()
+            stopWidgetActionObserver()
         }
     }
 
@@ -175,7 +190,6 @@ struct ReadingTimerView: View {
     private func startTimer() {
         let now = Date()
         
-        // ✅ 임시 세션 생성 (book 없이 생성 - SwiftData context와 완전히 분리)
         let newSession = ReadingSession(
             startTime: now,
             startPage: book.currentPage
@@ -193,6 +207,7 @@ struct ReadingTimerView: View {
 
         startLiveActivity()
         startUITimer()
+        updateWidgetState()
         
         print("🚀 타이머 시작: 임시 세션 생성됨 (SwiftData에 아직 저장 안 됨)")
     }
@@ -208,6 +223,7 @@ struct ReadingTimerView: View {
 
         startLiveActivity()
         startUITimer()
+        updateWidgetState()
     }
 
     private func pauseTimer() {
@@ -215,6 +231,7 @@ struct ReadingTimerView: View {
         isRunning = false
         timer?.invalidate()
         endLiveActivity()
+        updateWidgetState()
     }
 
     private func stopTimer() {
@@ -224,24 +241,22 @@ struct ReadingTimerView: View {
         isRunning = false
         timer?.invalidate()
 
-        // ✅ 임시 세션의 duration만 업데이트 (아직 저장 안 됨)
         if let session = currentSession {
             session.duration = finalElapsed
         }
 
         endLiveActivity()
+        // 위젯 상태는 유지 (EndPageInputView에서 처리)
+        updateWidgetState()
         showEndPageInput = true
     }
 
     private func cancelSession() {
-        // ✅ Cancel 시 임시 세션 완전히 버리기
-        // SwiftData에 insert된 적이 없으므로 nil로만 설정하면 됨
         print("🗑️ 세션 취소: duration=\(currentSession?.duration ?? 0)초 (저장 안 함)")
         
         currentSession = nil
         resetAfterCompletion()
-        
-        // ✅ 혹시 모를 상황 대비 context rollback
+        clearWidgetState()
         modelContext.rollback()
     }
 
@@ -253,6 +268,9 @@ struct ReadingTimerView: View {
             if isTimerMode, let end = timerEndDate, Date() >= end {
                 handleTimerCompletion()
             }
+            
+            // 위젯 상태 업데이트 (1초마다)
+            updateWidgetState()
         }
     }
 
@@ -263,7 +281,6 @@ struct ReadingTimerView: View {
         pausedElapsedTime = TimeInterval(targetMinutes * 60)
         elapsedTime = pausedElapsedTime
 
-        // ✅ 임시 세션의 duration만 업데이트 (아직 저장 안 됨)
         if let session = currentSession {
             session.duration = pausedElapsedTime
         }
@@ -345,6 +362,74 @@ struct ReadingTimerView: View {
         return h > 0
             ? String(format: "%d:%02d:%02d", h, m, s)
             : String(format: "%d:%02d", m, s)
+    }
+    
+    // MARK: - Widget State Sync
+    
+    @State private var widgetObserverTimer: Timer?
+    
+    private func setupWidgetStateSync() {
+        // 초기 상태를 위젯에 저장
+        updateWidgetState()
+    }
+    
+    private func setupWidgetActionObserver() {
+        // UserDefaults를 주기적으로 체크하여 위젯 액션 감지
+        widgetObserverTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            
+            if let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader"),
+               let action = defaults.string(forKey: "widget.action") {
+                
+                defaults.removeObject(forKey: "widget.action")
+                
+                // 스탑 액션이고 EndPageInputView로 이동해야 하는 경우 플래그 유지
+                if action == "stop" && defaults.bool(forKey: "widget.openEndPageInput") {
+                    // 플래그는 유지하고 액션만 제거 (앱이 열릴 때 처리)
+                    defaults.synchronize()
+                    return
+                }
+                
+                defaults.synchronize()
+                
+                DispatchQueue.main.async {
+                    if action == "toggle" {
+                        if self.isRunning {
+                            self.pauseTimer()
+                        } else {
+                            self.resumeTimer()
+                        }
+                    }
+                    // stop 액션은 앱이 열릴 때 BookListView에서 처리
+                }
+            }
+        }
+    }
+    
+    private func stopWidgetActionObserver() {
+        widgetObserverTimer?.invalidate()
+        widgetObserverTimer = nil
+    }
+    
+    private func updateWidgetState() {
+        let state = TimerStateManager.TimerState(
+            isRunning: isRunning,
+            bookTitle: book.title,
+            currentPage: book.currentPage,
+            totalPages: book.totalPages,
+            elapsedTime: elapsedTime,
+            sessionStartTime: isRunning ? sessionStartTime : nil,
+            pausedTime: pausedElapsedTime,
+            isTimerMode: isTimerMode,
+            targetMinutes: targetMinutes,
+            timerEndDate: timerEndDate,
+            bookID: book.id.uuidString
+        )
+        
+        stateManager.saveState(state)
+    }
+    
+    private func clearWidgetState() {
+        stateManager.clearState()
     }
 }
 
@@ -446,3 +531,4 @@ struct TimerPickerView: View {
         }
     }
 }
+

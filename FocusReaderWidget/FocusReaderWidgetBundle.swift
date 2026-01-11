@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct FocusReaderWidgetBundle: WidgetBundle {
     var body: some Widget {
+        FocusReaderWidget()
         ReadingTimerLiveActivity()
     }
 }

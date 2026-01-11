@@ -4,56 +4,84 @@ import SwiftData
 // MARK: - Book List View
 struct BookListView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \Book.createdAt, order: .reverse) private var books: [Book]
-    
+
     @State private var showAddBook = false
     @State private var currentIndex = 0
     @State private var showDetails = false
     
+    // 딥링크 처리
+    @State private var showEndPageInput = false
+    @State private var selectedBook: Book?
+    @State private var currentSession: ReadingSession?
+    
+    // ✅ Premium Gate
+    @StateObject private var storeManager = StoreKitManager.shared
+    @State private var showPremiumSheet = false
+    
+    // ✅ App Open Ad Manager
+    @StateObject private var appOpenAdManager = AppOpenAdManager.shared
+    
+    // ✅ 앱 실행 시 첫 광고 표시 여부 추적
+    @State private var hasShownInitialAd = false
+
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     private var isIPad: Bool { horizontalSizeClass == .regular }
-    
+
     var body: some View {
         NavigationStack {
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        Color(.systemBackground),
-                        Color(.systemGray6).opacity(0.3)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+            VStack(spacing: 0) {
                 
-                if books.isEmpty {
-                    emptyStateView
-                } else {
-                    VStack(spacing: 0) {
-                        TabView(selection: $currentIndex) {
-                            ForEach(Array(books.enumerated()), id: \.element.id) { index, book in
-                                BookCardView(
-                                    book: book,
-                                    onDelete: { deleteBook(book) },
-                                    showDetails: $showDetails,
-                                    isIPad: isIPad
-                                )
-                                .tag(index)
+                AdaptiveTopBannerView()
+                
+                ZStack {
+                    LinearGradient(
+                        colors: [
+                            Color(.systemBackground),
+                            Color(.systemGray6).opacity(0.3)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea()
+
+                    if books.isEmpty {
+                        emptyStateView
+                    } else {
+                        VStack(spacing: 0) {
+                            TabView(selection: $currentIndex) {
+                                ForEach(Array(books.enumerated()), id: \.element.id) { index, book in
+                                    BookCardView(
+                                        book: book,
+                                        onDelete: { deleteBook(book) },
+                                        showDetails: $showDetails,
+                                        isIPad: isIPad
+                                    )
+                                    .tag(index)
+                                }
                             }
+                            .tabViewStyle(
+                                .page(
+                                    indexDisplayMode: books.count > 1 ? .automatic : .never
+                                )
+                            )
+                            .onChange(of: currentIndex) { _, _ in
+                                showDetails = false
+                            }
+
+                            bottomInfoView
                         }
-                        .tabViewStyle(.page(indexDisplayMode: books.count > 1 ? .automatic : .never))
-                        .onChange(of: currentIndex) { _, _ in
-                            showDetails = false
-                        }
-                        
-                        bottomInfoView
                     }
                 }
+
+                // 🔽 하단 배너 광고
+                AdaptiveBottomBannerView()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        showAddBook = true
+                        handleAddBookTap()
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
@@ -64,26 +92,98 @@ struct BookListView: View {
             .fullScreenCover(isPresented: $showAddBook) {
                 AddBookView()
             }
+            .sheet(isPresented: $showPremiumSheet) {
+                PurchaseView()
+            }
+            .fullScreenCover(isPresented: $showEndPageInput) {
+                if let book = selectedBook {
+                    EndPageInputView(book: book, session: currentSession) {
+                        handleEndPageSaved()
+                    } onCancel: {
+                        handleEndPageCancelled()
+                    }
+                }
+            }
+            .onAppear {
+                // 딥링크 알림 감지
+                NotificationCenter.default.addObserver(
+                    forName: NSNotification.Name("OpenEndPageInputFromDeepLink"),
+                    object: nil,
+                    queue: .main
+                ) { _ in
+                    handleDeepLinkStop()
+                }
+                
+                // 앱이 포그라운드로 올 때 위젯 스탑 액션 체크
+                checkWidgetStopAction()
+            }
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                if oldPhase == .background && newPhase == .active {
+                    // 앱이 백그라운드에서 포그라운드로 올 때 체크
+                    checkWidgetStopAction()
+                }
+            }
+            .onDisappear {
+                NotificationCenter.default.removeObserver(self)
+            }
+            // ✅ 앱 시작 시 광고 로드
+            .task {
+                await appOpenAdManager.loadAd()
+                
+                // 첫 실행 시에만 광고 표시 (쿨타임 체크 포함)
+                if !hasShownInitialAd {
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5초 대기
+                    await appOpenAdManager.showAdIfAvailable()
+                    hasShownInitialAd = true
+                }
+            }
+            // ✅ Scene Phase 변화 감지 (백그라운드 → 포그라운드 복귀 시)
+                       .onChange(of: scenePhase) {
+                           // 백그라운드에서 돌아올 때만 광고 표시 (쿨타임 체크 포함)
+                           if scenePhase == .active {
+                               Task {
+                                   // 약간의 딜레이로 자연스러운 전환
+                                   try? await Task.sleep(nanoseconds: 300_000_000) // 0.3초
+                                   await appOpenAdManager.showAdIfAvailable()
+                               }
+                           }
+                       }
+                   }
+               }
+    
+    // MARK: - Add Book Logic (Premium Gate)
+    private func handleAddBookTap() {
+        // 프리미엄 사용자는 무제한 추가 가능
+        if storeManager.isPremium {
+            showAddBook = true
+            return
+        }
+        
+        // 무료 사용자는 1권까지만 추가 가능
+        if books.count >= 1 {
+            showPremiumSheet = true
+        } else {
+            showAddBook = true
         }
     }
-    
+
     // MARK: - Empty State
     private var emptyStateView: some View {
         VStack(spacing: 24) {
             Image(systemName: "books.vertical")
                 .font(.system(size: isIPad ? 120 : 80))
                 .foregroundStyle(.blue.opacity(0.5))
-            
+
             Text("empty_no_books_title")
                 .font(isIPad ? .largeTitle : .title)
                 .fontWeight(.bold)
-            
+
             Text("empty_no_books_subtitle")
                 .foregroundColor(.secondary)
         }
         .padding(40)
     }
-    
+
     // MARK: - Bottom Info
     private var bottomInfoView: some View {
         VStack {
@@ -96,7 +196,7 @@ struct BookListView: View {
         }
         .background(Color(.systemBackground))
     }
-    
+
     private func deleteBook(_ book: Book) {
         withAnimation {
             book.sessions?.forEach { modelContext.delete($0) }
@@ -105,7 +205,66 @@ struct BookListView: View {
             try? modelContext.save()
         }
     }
+    
+    // MARK: - Deep Link Handling
+    private func handleDeepLinkStop() {
+        checkWidgetStopAction()
+    }
+    
+    private func checkWidgetStopAction() {
+        // 이미 EndPageInputView가 표시되어 있으면 무시
+        guard !showEndPageInput else { return }
+        
+        let manager = TimerStateManager.shared
+        guard let state = manager.loadState(),
+              let bookIDString = state.bookID,
+              let bookID = UUID(uuidString: bookIDString) else {
+            return
+        }
+        
+        // 위젯에서 스탑 액션이 있는지 체크
+        if let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader"),
+           defaults.bool(forKey: "widget.openEndPageInput") {
+            
+            // 플래그 제거
+            defaults.removeObject(forKey: "widget.openEndPageInput")
+            defaults.removeObject(forKey: "widget.action")
+            defaults.synchronize()
+            
+            // 책 찾기
+            guard let book = books.first(where: { $0.id == bookID }) else {
+                print("❌ 딥링크: 책을 찾을 수 없음 (ID: \(bookIDString))")
+                return
+            }
+            
+            // 세션 생성
+            let session = ReadingSession(
+                startTime: state.sessionStartTime ?? Date().addingTimeInterval(-state.elapsedTime),
+                startPage: book.currentPage
+            )
+            session.duration = state.elapsedTime
+            
+            selectedBook = book
+            currentSession = session
+            showEndPageInput = true
+        }
+    }
+    
+    private func handleEndPageSaved() {
+        TimerStateManager.shared.clearState()
+        selectedBook = nil
+        currentSession = nil
+        showEndPageInput = false
+    }
+    
+    private func handleEndPageCancelled() {
+        TimerStateManager.shared.clearState()
+        selectedBook = nil
+        currentSession = nil
+        showEndPageInput = false
+    }
 }
+
 
 // MARK: - Book Card View
 struct BookCardView: View {
@@ -129,27 +288,31 @@ struct BookCardView: View {
     
     var body: some View {
         GeometryReader { geo in
-            VStack {
-                Spacer()
-                
-                bookCoverWithOverlay
-                    .offset(y: showDetails ? -12 : 0)
-                    .scaleEffect(showDetails ? 1.03 : 1.0)
-                    .animation(
-                        .spring(response: 0.4, dampingFraction: 0.85),
-                        value: showDetails
-                    )
-                    .onTapGesture {
-                        handleTap()
+            ScrollView {
+                VStack {
+                    Spacer(minLength: 20)
+                    
+                    bookCoverWithOverlay
+                        .offset(y: showDetails ? -12 : 0)
+                        .scaleEffect(showDetails ? 1.03 : 1.0)
+                        .animation(
+                            .spring(response: 0.4, dampingFraction: 0.85),
+                            value: showDetails
+                        )
+                        .onTapGesture {
+                            handleTap()
+                        }
+                    
+                    if showDetails {
+                        actionButtonsView
+                            .padding(.top, isIPad ? 32 : 24)
+                            .padding(.bottom, isIPad ? 100 : 80)
+                            .transition(.move(edge: .top).combined(with: .opacity))
                     }
-                
-                if showDetails {
-                    actionButtonsView
-                        .padding(.top, isIPad ? 32 : 24)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                    
+                    Spacer(minLength: 20)
                 }
-                
-                Spacer()
+                .frame(minHeight: geo.size.height)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
@@ -277,7 +440,7 @@ struct BookCardView: View {
     // MARK: - Completed Overlay
     private var completedOverlay: some View {
         RoundedRectangle(cornerRadius: 20)
-            .fill(Color.green.opacity(0.3))
+            .fill(Color.clear)
             .overlay {
                 Text("finished")
                     .font(.title2)
@@ -331,15 +494,13 @@ struct BookCardView: View {
         }
     }
     
-    // MARK: - Computed Properties (로컬라이징)
-    // MARK: - Computed Properties (수정된 버전)
+    // MARK: - Computed Properties
     private var pageText: String {
         let currentPages = book.currentPage
         let totalPages = book.totalPages
         let pageUnitKey = totalPages == 1 ? "page_singular" : "page_plural"
         let pageUnit = NSLocalizedString(pageUnitKey, comment: "Page unit")
         
-        // 수정: String(format:) 사용
         return String(format: "%d / %d %@", currentPages, totalPages, pageUnit)
     }
     
@@ -357,7 +518,6 @@ struct BookCardView: View {
         let hourUnit = NSLocalizedString(hours == 1 ? "hour_singular" : "hour_plural", comment: "Hour unit")
         let minUnit = NSLocalizedString(mins == 1 ? "minute_singular" : "minute_plural", comment: "Minute unit")
         
-        // 수정: String(format:) 사용
         if hours > 0 {
             if mins > 0 {
                 return String(format: "%d%@ %d%@", hours, hourUnit, mins, minUnit)

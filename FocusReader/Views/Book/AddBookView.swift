@@ -14,66 +14,72 @@ struct AddBookView: View {
     @State private var showCamera = false
     
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Book Information") {
-                    TextField("Title", text: $title)
-                    TextField("Author", text: $author)
-                    TextField("Total Pages", text: $totalPages)
-                        .keyboardType(.numberPad)
-                }
-                
-                Section("Cover Image") {
-                    if let selectedImage = selectedImage {
-                        Image(uiImage: selectedImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 200)
-                            .frame(maxWidth: .infinity)
+        VStack(spacing: 0) {
+            AdaptiveTopBannerView()
+
+            NavigationStack {
+                Form {
+                    Section("Book Information") {
+                        TextField("Title", text: $title)
+                        TextField("Author", text: $author)
+                        TextField("Total Pages", text: $totalPages)
+                            .keyboardType(.numberPad)
                     }
                     
-                    HStack(spacing: 16) {
-                        // 갤러리에서 선택
-                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            Label("Gallery", systemImage: "photo")
+                    Section("Cover Image") {
+                        if let selectedImage = selectedImage {
+                            Image(uiImage: selectedImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 200)
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.bordered)
                         
-                        // 카메라로 촬영
-                        Button {
-                            showCamera = true
-                        } label: {
-                            Label("Camera", systemImage: "camera")
-                                .frame(maxWidth: .infinity)
+                        HStack(spacing: 16) {
+                            // 갤러리에서 선택
+                            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                                Label("Gallery", systemImage: "photo")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            
+                            // 카메라로 촬영
+                            Button {
+                                showCamera = true
+                            } label: {
+                                Label("Camera", systemImage: "camera")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
                         }
-                        .buttonStyle(.bordered)
                     }
                 }
-            }
-            .navigationTitle("Add Book")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { saveBook() }
-                        .disabled(!isValid)
-                }
-            }
-            .onChange(of: selectedPhoto) { oldValue, newValue in
-                Task {
-                    if let data = try? await newValue?.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data) {
-                        selectedImage = image
+                .navigationTitle("Add Book")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") { saveBook() }
+                            .disabled(!isValid)
                     }
                 }
+                .onChange(of: selectedPhoto) { oldValue, newValue in
+                    Task {
+                        if let data = try? await newValue?.loadTransferable(type: Data.self),
+                           let image = UIImage(data: data) {
+                            selectedImage = image
+                        }
+                    }
+                }
+                .sheet(isPresented: $showCamera) {
+                    ImagePicker(image: $selectedImage, sourceType: .camera)
+                        .ignoresSafeArea()
+                }
             }
-            .sheet(isPresented: $showCamera) {
-                ImagePicker(image: $selectedImage, sourceType: .camera)
-                    .ignoresSafeArea()
-            }
+
+            AdaptiveBottomBannerView()
         }
     }
     
