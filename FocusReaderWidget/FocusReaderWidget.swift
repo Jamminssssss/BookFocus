@@ -51,7 +51,7 @@ struct Provider: TimelineProvider {
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<TimerEntry>) -> ()) {
         let manager = TimerStateManager.shared
-        var state = manager.loadState() ?? TimerStateManager.TimerState(
+        let state = manager.loadState() ?? TimerStateManager.TimerState(
             isRunning: false,
             bookTitle: "",
             currentPage: 0,
@@ -65,35 +65,15 @@ struct Provider: TimelineProvider {
             bookID: nil
         )
         
-        // 현재 시간 계산
-        if state.isRunning, let startDate = state.sessionStartTime {
-            let now = Date()
-            let elapsed = now.timeIntervalSince(startDate)
-            state.elapsedTime = state.pausedTime + elapsed
-        }
-        
         let currentDate = Date()
-        var entries: [TimerEntry] = []
+        let entry = TimerEntry(date: currentDate, timerState: state)
         
-        // 1분마다 업데이트되는 타임라인 생성 (다음 5분)
-        for minuteOffset in 0..<5 {
-            if let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: currentDate) {
-                var entryState = state
-                
-                // 실행 중이면 경과 시간 업데이트
-                if state.isRunning, let startDate = state.sessionStartTime {
-                    let elapsed = entryDate.timeIntervalSince(startDate)
-                    entryState.elapsedTime = state.pausedTime + elapsed
-                }
-                
-                entries.append(TimerEntry(date: entryDate, timerState: entryState))
-            }
-        }
+        // Update more frequently when running (every 15 seconds), otherwise every hour
+        let nextUpdate = state.isRunning
+            ? Calendar.current.date(byAdding: .second, value: 15, to: currentDate)!
+            : Calendar.current.date(byAdding: .hour, value: 1, to: currentDate)!
         
-        // 다음 업데이트 정책: 실행 중이면 1분마다, 아니면 더 길게
-        let policy: TimelineReloadPolicy = state.isRunning ? .after(Calendar.current.date(byAdding: .minute, value: 1, to: currentDate)!) : .after(Calendar.current.date(byAdding: .hour, value: 1, to: currentDate)!)
-        
-        let timeline = Timeline(entries: entries, policy: policy)
+        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
         completion(timeline)
     }
 }
@@ -128,30 +108,33 @@ struct SmallWidgetView: View {
     var body: some View {
         VStack(spacing: 6) {
             if !entry.timerState.bookTitle.isEmpty {
-                // 책 이름
+                // Book title
                 Text(entry.timerState.bookTitle)
                     .font(.caption2)
                     .fontWeight(.semibold)
                     .lineLimit(1)
                     .multilineTextAlignment(.center)
                 
-                // 페이지
+                // Page info
                 Text("Page \(entry.timerState.currentPage)/\(entry.timerState.totalPages)")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
-                // 경과 시간
-                Text(formatTime(entry.timerState.elapsedTime))
-                    .font(.system(size: 20, weight: .bold, design: .monospaced))
-                    .foregroundColor(entry.timerState.isRunning ? .primary : .secondary)
-                    .minimumScaleFactor(0.8)
-                    .lineLimit(1)
+                // Timer display - Real-time update
+                TimerDisplayView(
+                    isRunning: entry.timerState.isRunning,
+                    sessionStartTime: entry.timerState.sessionStartTime,
+                    pausedTime: entry.timerState.pausedTime,
+                    isTimerMode: entry.timerState.isTimerMode,
+                    timerEndDate: entry.timerState.timerEndDate,
+                    fontSize: 20
+                )
             } else {
                 VStack(spacing: 4) {
                     Image(systemName: "book.fill")
                         .font(.title2)
                         .foregroundColor(.secondary)
-                    Text("타이머를\n시작하세요")
+                    Text("Start\nTimer")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -160,12 +143,12 @@ struct SmallWidgetView: View {
             
             Spacer(minLength: 4)
             
-            // 재생/일시정지 버튼
+            // Play/Pause button
             Button(intent: ToggleTimerIntent()) {
                 VStack(spacing: 2) {
                     Image(systemName: entry.timerState.isRunning ? "pause.fill" : "play.fill")
                         .font(.title3)
-                    Text(entry.timerState.isRunning ? "일시정지" : "재생")
+                    Text(entry.timerState.isRunning ? "Pause" : "Play")
                         .font(.system(size: 10))
                 }
                 .foregroundColor(.white)
@@ -188,35 +171,37 @@ struct MediumWidgetView: View {
     
     var body: some View {
         HStack(spacing: 16) {
-            // 왼쪽: 정보
+            // Left: Information
             VStack(alignment: .leading, spacing: 8) {
-                // 현재 시간
-                Text(entry.date, style: .time)
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                // Current time
+               
                 
                 if !entry.timerState.bookTitle.isEmpty {
-                    // 책 이름
+                    // Book title
                     Text(entry.timerState.bookTitle)
                         .font(.headline)
                         .lineLimit(2)
                     
-                    // 페이지
+                    // Page info
                     Text("Page \(entry.timerState.currentPage) / \(entry.timerState.totalPages)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    // 경과 시간
-                    Text(formatTime(entry.timerState.elapsedTime))
-                        .font(.system(.title2, design: .monospaced))
-                        .fontWeight(.bold)
-                        .foregroundColor(entry.timerState.isRunning ? .primary : .secondary)
+                    // Timer display - Real-time update
+                    TimerDisplayView(
+                        isRunning: entry.timerState.isRunning,
+                        sessionStartTime: entry.timerState.sessionStartTime,
+                        pausedTime: entry.timerState.pausedTime,
+                        isTimerMode: entry.timerState.isTimerMode,
+                        timerEndDate: entry.timerState.timerEndDate,
+                        fontSize: 28
+                    )
                 } else {
-                    Text("타이머를 시작하세요")
+                    Text("Start Timer")
                         .font(.headline)
                         .foregroundColor(.secondary)
                     
-                    Text("앱에서 책을 선택하고\n타이머를 시작하세요")
+                    Text("Select a book in the app\nand start the timer")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.leading)
@@ -225,13 +210,13 @@ struct MediumWidgetView: View {
             
             Spacer()
             
-            // 오른쪽: 재생/일시정지 버튼
+            // Right: Play/Pause button
             Button(intent: ToggleTimerIntent()) {
                 VStack(spacing: 6) {
                     Image(systemName: entry.timerState.isRunning ? "pause.fill" : "play.fill")
                         .font(.system(size: 32))
                         .foregroundColor(.white)
-                    Text(entry.timerState.isRunning ? "일시정지" : "재생")
+                    Text(entry.timerState.isRunning ? "Pause" : "Play")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
@@ -254,14 +239,11 @@ struct LargeWidgetView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            // 현재 시간
-            Text(entry.date, style: .time)
-                .font(.title)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
+            // Current time
+           
             
             if !entry.timerState.bookTitle.isEmpty {
-                // 책 정보
+                // Book info
                 VStack(spacing: 8) {
                     Text(entry.timerState.bookTitle)
                         .font(.title2)
@@ -274,19 +256,24 @@ struct LargeWidgetView: View {
                         .foregroundColor(.secondary)
                 }
                 
-                // 경과 시간
-                Text(formatTime(entry.timerState.elapsedTime))
-                    .font(.system(size: 48, weight: .bold, design: .monospaced))
-                    .foregroundColor(entry.timerState.isRunning ? .primary : .secondary)
-                    .padding(.vertical, 8)
+                // Timer display - Real-time update
+                TimerDisplayView(
+                    isRunning: entry.timerState.isRunning,
+                    sessionStartTime: entry.timerState.sessionStartTime,
+                    pausedTime: entry.timerState.pausedTime,
+                    isTimerMode: entry.timerState.isTimerMode,
+                    timerEndDate: entry.timerState.timerEndDate,
+                    fontSize: 48
+                )
+                .padding(.vertical, 8)
             } else {
                 VStack(spacing: 12) {
-                    Text("타이머를 시작하세요")
+                    Text("Start Timer")
                         .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(.secondary)
                     
-                    Text("앱에서 책을 선택하고\n타이머를 시작하세요")
+                    Text("Select a book in the app\nand start the timer")
                         .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -295,12 +282,12 @@ struct LargeWidgetView: View {
             
             Spacer()
             
-            // 재생/일시정지 버튼
+            // Play/Pause button
             Button(intent: ToggleTimerIntent()) {
                 HStack(spacing: 12) {
                     Image(systemName: entry.timerState.isRunning ? "pause.fill" : "play.fill")
                         .font(.system(size: 28))
-                    Text(entry.timerState.isRunning ? "일시정지" : "재생")
+                    Text(entry.timerState.isRunning ? "Pause" : "Play")
                         .font(.title3)
                         .fontWeight(.semibold)
                 }
@@ -318,14 +305,59 @@ struct LargeWidgetView: View {
     }
 }
 
-// MARK: - Helper
-private func formatTime(_ time: TimeInterval) -> String {
-    let h = Int(time) / 3600
-    let m = Int(time) / 60 % 60
-    let s = Int(time) % 60
-    return h > 0
-        ? String(format: "%d:%02d:%02d", h, m, s)
-        : String(format: "%d:%02d", m, s)
+// MARK: - Timer Display View (Real-time update)
+struct TimerDisplayView: View {
+    let isRunning: Bool
+    let sessionStartTime: Date?
+    let pausedTime: TimeInterval
+    let isTimerMode: Bool
+    let timerEndDate: Date?
+    let fontSize: CGFloat
+    
+    var body: some View {
+        if isRunning {
+            if isTimerMode, let endDate = timerEndDate {
+                // Timer mode: Countdown
+                let remaining = endDate.timeIntervalSince(Date())
+                
+                if remaining > 0 {
+                    Text(timerInterval: Date() ... endDate, countsDown: true)
+                        .font(.system(size: fontSize, weight: .bold, design: .monospaced))
+                        .foregroundColor(remaining < 60 ? .red : .primary)
+                        .monospacedDigit()
+                } else {
+                    // Timer finished
+                    Text("0:00")
+                        .font(.system(size: fontSize, weight: .bold, design: .monospaced))
+                        .foregroundColor(.red)
+                        .monospacedDigit()
+                }
+            } else if let startDate = sessionStartTime {
+                // Stopwatch mode: Counts up from start time
+                let adjustedStartDate = startDate.addingTimeInterval(-pausedTime)
+                
+                Text(adjustedStartDate, style: .timer)
+                    .font(.system(size: fontSize, weight: .bold, design: .monospaced))
+                    .foregroundColor(.primary)
+                    .monospacedDigit()
+            }
+        } else {
+            // Paused: Display fixed time
+            Text(formatTime(pausedTime))
+                .font(.system(size: fontSize, weight: .bold, design: .monospaced))
+                .foregroundColor(.secondary)
+                .monospacedDigit()
+        }
+    }
+    
+    private func formatTime(_ time: TimeInterval) -> String {
+        let h = Int(time) / 3600
+        let m = Int(time) / 60 % 60
+        let s = Int(time) % 60
+        return h > 0
+            ? String(format: "%d:%02d:%02d", h, m, s)
+            : String(format: "%d:%02d", m, s)
+    }
 }
 
 struct FocusReaderWidget: Widget {

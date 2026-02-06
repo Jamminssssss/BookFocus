@@ -42,6 +42,9 @@ struct ReadingTimerView: View {
     private var coverHeight: CGFloat {
         isIPad ? 400 : 260
     }
+    
+    @State private var widgetObserverTimer: Timer?
+    @State private var endLiveActivityObserver: NSObjectProtocol?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -108,7 +111,7 @@ struct ReadingTimerView: View {
                                   systemImage: isRunning ? "pause.fill" : "play.fill")
                                 .font(isIPad ? .title3 : .body)
                                 .foregroundColor(.white)
-                                .padding(.horizontal, isIPad ? 50 : 40)
+                                .frame(width: isIPad ? 160 : 130) // 고정 너비 추가
                                 .padding(.vertical, isIPad ? 18 : 14)
                                 .background(isRunning ? Color.orange : Color.green)
                                 .cornerRadius(isIPad ? 14 : 10)
@@ -118,7 +121,7 @@ struct ReadingTimerView: View {
                             Label("Stop", systemImage: "stop.fill")
                                 .font(isIPad ? .title3 : .body)
                                 .foregroundColor(.white)
-                                .padding(.horizontal, isIPad ? 50 : 40)
+                                .frame(width: isIPad ? 160 : 130) // 고정 너비 추가
                                 .padding(.vertical, isIPad ? 18 : 14)
                                 .background(Color.red)
                                 .cornerRadius(isIPad ? 14 : 10)
@@ -173,11 +176,24 @@ struct ReadingTimerView: View {
             endAllLiveActivities()
             setupWidgetStateSync()
             setupWidgetActionObserver()
+            
+            // EndPageInputView에서 종료 요청 알림 수신
+            endLiveActivityObserver = NotificationCenter.default.addObserver(forName: Notification.Name("ReadingTimer.EndLiveActivity"), object: nil, queue: .main) { _ in
+                handleEndLiveActivityNotification()
+            }
         }
         .onDisappear {
             timer?.invalidate()
-            endLiveActivity()
             stopWidgetActionObserver()
+            // 정리: 진행 중이 아니고, 세션도 없고, EndPageInputView도 열려있지 않다면 위젯/라이브 액티비티 정리
+            if !isRunning && currentSession == nil && !showEndPageInput {
+                endLiveActivity()
+                clearWidgetState()
+            }
+            if let token = endLiveActivityObserver {
+                NotificationCenter.default.removeObserver(token)
+                endLiveActivityObserver = nil
+            }
         }
     }
 
@@ -207,6 +223,7 @@ struct ReadingTimerView: View {
 
         startLiveActivity()
         startUITimer()
+        updateLiveActivity()
         updateWidgetState()
         
         print("🚀 타이머 시작: 임시 세션 생성됨 (SwiftData에 아직 저장 안 됨)")
@@ -221,8 +238,9 @@ struct ReadingTimerView: View {
             timerEndDate = Date().addingTimeInterval(remaining)
         }
 
-        startLiveActivity()
+        // 라이브 액티비티 재요청 대신 상태 업데이트
         startUITimer()
+        updateLiveActivity()
         updateWidgetState()
     }
 
@@ -230,7 +248,8 @@ struct ReadingTimerView: View {
         pausedElapsedTime += Date().timeIntervalSince(sessionStartTime)
         isRunning = false
         timer?.invalidate()
-        endLiveActivity()
+        // 라이브 액티비티 종료 대신 상태 업데이트
+        updateLiveActivity()
         updateWidgetState()
     }
 
@@ -269,8 +288,9 @@ struct ReadingTimerView: View {
                 handleTimerCompletion()
             }
             
-            // 위젯 상태 업데이트 (1초마다)
+            // 위젯/라이브 액티비티 상태 업데이트 (1초마다)
             updateWidgetState()
+            updateLiveActivity()
         }
     }
 
@@ -285,6 +305,7 @@ struct ReadingTimerView: View {
             session.duration = pausedElapsedTime
         }
 
+        updateLiveActivity()
         endLiveActivity()
         playAlarm()
         showTimerAlert = true
@@ -347,6 +368,31 @@ struct ReadingTimerView: View {
             }
         }
     }
+    
+    private func updateLiveActivity() {
+        guard let activity = activity else { return }
+        let activityStartDate = Date().addingTimeInterval(-pausedElapsedTime)
+        let contentState = ReadingTimerAttributes.ContentState(
+            timerStartDate: activityStartDate,
+            pausedTime: pausedElapsedTime,
+            isRunning: isRunning,
+            isTimerMode: isTimerMode,
+            targetMinutes: targetMinutes,
+            timerEndDate: isTimerMode ? timerEndDate : nil,
+            currentPage: book.currentPage,
+            totalPages: book.totalPages
+        )
+        Task { await activity.update(ActivityContent(state: contentState, staleDate: nil)) }
+    }
+    
+    private func handleEndLiveActivityNotification() {
+        // 라이브 액티비티 종료 요청 처리
+        endLiveActivity()
+        // 진행 중이 아니고 세션이 없으면 위젯 상태도 정리
+        if !isRunning && currentSession == nil {
+            clearWidgetState()
+        }
+    }
 
     // MARK: - Utils
 
@@ -366,15 +412,13 @@ struct ReadingTimerView: View {
     
     // MARK: - Widget State Sync
     
-    @State private var widgetObserverTimer: Timer?
-    
     private func setupWidgetStateSync() {
         // 초기 상태를 위젯에 저장
         updateWidgetState()
     }
     
     private func setupWidgetActionObserver() {
-        // UserDefaults를 주기적으로 체크하여 위젯 액션 감지
+        // UserDefaults를 주기적으로 체크하여 위젯/워치 액션 감지
         widgetObserverTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
             
             if let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader"),
@@ -396,10 +440,40 @@ struct ReadingTimerView: View {
                         if self.isRunning {
                             self.pauseTimer()
                         } else {
-                            self.resumeTimer()
+                            if self.currentSession == nil {
+                                self.startTimer()
+                            } else {
+                                self.resumeTimer()
+                            }
                         }
                     }
                     // stop 액션은 앱이 열릴 때 BookListView에서 처리
+                }
+            }
+            
+            // 워치 액션 체크
+            if let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader"),
+               let action = defaults.string(forKey: "watch.action") {
+                
+                defaults.removeObject(forKey: "watch.action")
+                defaults.synchronize()
+                
+                DispatchQueue.main.async {
+                    if action == "start" || action == "resume" {
+                        if !self.isRunning {
+                            if self.currentSession == nil {
+                                self.startTimer()
+                            } else {
+                                self.resumeTimer()
+                            }
+                        }
+                    } else if action == "pause" {
+                        if self.isRunning {
+                            self.pauseTimer()
+                        }
+                    } else if action == "stop" {
+                        self.stopTimer()
+                    }
                 }
             }
         }

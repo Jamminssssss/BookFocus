@@ -101,7 +101,7 @@ class TimerStateManager {
             return nil
         }
         
-        var state = TimerState(
+        let state = TimerState(
             isRunning: defaults.bool(forKey: Keys.isRunning),
             bookTitle: defaults.string(forKey: Keys.bookTitle) ?? "",
             currentPage: defaults.integer(forKey: Keys.currentPage),
@@ -146,5 +146,90 @@ class TimerStateManager {
         defaults.set(isRunning, forKey: Keys.isRunning)
         defaults.synchronize()
         WidgetCenter.shared.reloadTimelines(ofKind: "FocusReaderWidget")
+    }
+    
+    // MARK: - Book Data Structure (for watch)
+    struct BookData: Codable, Identifiable {
+        var id: String
+        var title: String
+        var author: String
+        var totalPages: Int
+        var currentPage: Int
+        var createdAt: Date
+        var lastUpdated: Date
+        
+        // 🔥 추가: 반납일 정보
+        var checkoutDate: Date?
+        var dueDate: Date?
+        
+        // 🔥 추가: 반납일 알림 계산 프로퍼티
+        var dueMinus1DayAtNine: Date? {
+            guard let due = dueDate else { return nil }
+            let d = Calendar.current.date(byAdding: .day, value: -1, to: due) ?? due
+            return nineAMLocal(on: d)
+        }
+        
+        var dueDayAtNine: Date? {
+            guard let due = dueDate else { return nil }
+            return nineAMLocal(on: due)
+        }
+        
+        private func nineAMLocal(on date: Date) -> Date {
+            var cal = Calendar.current
+            cal.timeZone = .current
+            let comps = cal.dateComponents([.year, .month, .day], from: date)
+            var nine = DateComponents()
+            nine.year = comps.year
+            nine.month = comps.month
+            nine.day = comps.day
+            nine.hour = 9
+            nine.minute = 0
+            nine.second = 0
+            return cal.date(from: nine) ?? date
+        }
+    }
+    
+    // MARK: - Books Management (for watch)
+    func saveBooks(_ books: [BookData]) {
+        guard let defaults = userDefaults else { return }
+        
+        if let encoded = try? JSONEncoder().encode(books) {
+            defaults.set(encoded, forKey: "books.data")
+            defaults.synchronize()
+        }
+    }
+    
+    func loadBooks() -> [BookData] {
+        guard let defaults = userDefaults,
+              let data = defaults.data(forKey: "books.data"),
+              let books = try? JSONDecoder().decode([BookData].self, from: data) else {
+            return []
+        }
+        return books
+    }
+    
+    func updateBook(_ book: BookData) {
+        var books = loadBooks()
+        if let index = books.firstIndex(where: { $0.id == book.id }) {
+            books[index] = book
+        } else {
+            books.append(book)
+        }
+        saveBooks(books)
+    }
+    
+    // MARK: - Action Flags
+    func setAction(_ action: String) {
+        guard let defaults = userDefaults else { return }
+        defaults.set(action, forKey: "watch.action")
+        defaults.synchronize()
+    }
+    
+    func getAction() -> String? {
+        guard let defaults = userDefaults else { return nil }
+        let action = defaults.string(forKey: "watch.action")
+        defaults.removeObject(forKey: "watch.action")
+        defaults.synchronize()
+        return action
     }
 }

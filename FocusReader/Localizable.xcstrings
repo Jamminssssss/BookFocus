@@ -3,6 +3,12 @@
   "strings" : {
     "%@ - Memos" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ - Memos"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -61,6 +67,12 @@
     },
     "%lld" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -121,7 +133,7 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "translated",
             "value" : "%1$lld / %2$lld"
           }
         },
@@ -439,12 +451,6 @@
     },
     "Add Book" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add Book"
-          }
-        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -490,13 +496,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "添加书籍"
+            "value" : "添加图书"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新增書籍"
+            "value" : "新增圖書"
           }
         }
       }
@@ -567,28 +573,22 @@
     },
     "Author" : {
       "localizations" : {
-        "en" : {
+        "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Author"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Autor"
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Auteur"
+            "value" : "Author"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Penulis"
+            "value" : "Pengarang"
           }
         },
         "ja" : {
@@ -757,8 +757,79 @@
         }
       }
     },
+    "book_return_reminder_title" : {
+      "comment" : "Notification title for book due reminder",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Book Return Reminder"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recordatorio de devolución de libro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rappel de retour de livre"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pengingat pengembalian buku"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返却期限のリマインダー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "도서 반납 알림"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การเตือนคืนหนังสือ"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhắc trả sách"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图书归还提醒"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "圖書歸還提醒"
+          }
+        }
+      }
+    },
     "Buy Premium to write memos permanently" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buy Premium to write memos permanently"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -780,13 +851,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プレミアムを購入して永久にメモを作成します"
+            "value" : "プレミアムを購入するとメモを恒久的に作成できます"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "메모를 영구적으로 작성하려면 프리미엄 구매"
+            "value" : "프리미엄을 구매하면 메모를 영구적으로 작성할 수 있어요"
           }
         },
         "th" : {
@@ -804,13 +875,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "购买高级版永久撰写备忘录"
+            "value" : "购买高级版即可永久保存备忘录"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "購買高級版永久撰寫備忘錄"
+            "value" : "購買高級版即可永久保存備忘錄"
           }
         }
       }
@@ -1007,8 +1078,78 @@
         }
       }
     },
+    "Checkout Date" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checkout Date"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fecha del préstamo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "date du prêt"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "tanggal pinjaman"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "貸出日"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대출일"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วันที่ยืม"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ngày vay"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "结帐日期"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "結帳日期"
+          }
+        }
+      }
+    },
     "Choose how long you want to read" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose how long you want to read"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1067,6 +1208,12 @@
     },
     "Close" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1076,7 +1223,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Presque"
+            "value" : "Fermer"
           }
         },
         "id" : {
@@ -1191,7 +1338,7 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "translated",
             "value" : "Current Page: %1$lld / %2$lld"
           }
         },
@@ -1311,6 +1458,64 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "刪除"
+          }
+        }
+      }
+    },
+    "Due Date" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fecha de vencimiento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date d'échéance"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tenggat waktu"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "期日"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마감일"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วันครบกำหนด"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ngày đáo hạn"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "到期日"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "到期日"
           }
         }
       }
@@ -1503,6 +1708,64 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "尚無書籍"
+          }
+        }
+      }
+    },
+    "Enable Library Due Reminder" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Habilitar recordatorio de entregas pendientes de la biblioteca"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activer le rappel de bibliothèque"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktifkan Pengingat Jatuh Tempo Perpustakaan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "図書館の返却期限リマインダーを有効にする"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "도서관 반납일 알림 활성화"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิดใช้งานการแจ้งเตือนการคืนหนังสือห้องสมุด"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật tính năng nhắc nhở trả sách thư viện"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "启用图书归还提醒"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "啟用圖書歸還提醒"
           }
         }
       }
@@ -1827,64 +2090,6 @@
         }
       }
     },
-    "Free" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "gratis"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "gratuité"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "gratis"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "無料"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "무료"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ความเบื่อ"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không có phí"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "免费 "
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "免費"
-          }
-        }
-      }
-    },
     "Gallery" : {
       "localizations" : {
         "en" : {
@@ -1945,64 +2150,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "相簿"
-          }
-        }
-      }
-    },
-    "Get unlimited books, notes, and remove ads. Enjoy full reading stats!" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Los libros ilimitado, notas y eliminar anuncios.¡Disfrute de la lectura completa!"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Obtenez des livres illimités, des notes et supprimez les annonces. Profitez de la lecture complète des statistiques!"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dapatkan buku tak terbatas, catatan, dan hapus iklan. Nikmati statistik pembacaan lengkap!"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "本やメモを無制限に入手し、広告を削除できます。 全巻読み放題をお楽しみいただけます！"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "무제한으로 책을 읽고, 메모를 하고, 광고를 삭제하세요. 통계를 모두 읽어보세요!"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "รับหนังสือ, โน้ต, และลบโฆษณาได้ไม่จำกัดจำนวน. ขอให้สนุกกับการอ่านสถิติ!"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nhận được không giới hạn sách, ghi chú và xóa quảng cáo. Đọc thống kê đầy đủ!"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "获取无限量的书籍和笔记，并移除广告。 享受完整的阅读统计数据！"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "獲取無限量的書籍和筆記，並移除廣告。 享受完整的閱讀統計數據！"
           }
         }
       }
@@ -2090,7 +2237,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "l'heure"
+            "value" : "heure"
           }
         },
         "id" : {
@@ -2137,8 +2284,72 @@
         }
       }
     },
+    "Library Loan" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Préstamo de biblioteca"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prêt de bibliothèque"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pinjaman Perpustakaan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "図書館の貸出し"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "도서관 대출"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สินเชื่อห้องสมุด"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cho mượn thư viện"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图书馆借阅"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "圖書館借閱"
+          }
+        }
+      }
+    },
     "Loading products…" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading products…"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2148,7 +2359,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Produits de chargement…"
+            "value" : "Chargement des produits…"
           }
         },
         "id" : {
@@ -2160,7 +2371,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "製品をロードしています···"
+            "value" : "製品を読み込み中…"
           }
         },
         "ko" : {
@@ -2184,7 +2395,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "载产品…"
+            "value" : "正在加载产品…"
           }
         },
         "zh-Hant" : {
@@ -2261,6 +2472,12 @@
     },
     "Memos are available with Premium purchase." : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memos are available with Premium purchase."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2288,7 +2505,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "메모는 프리미엄 구매 시 제공됩니다."
+            "value" : "프리미엄을 구매하면 메모 기능을 사용할 수 있어요."
           }
         },
         "th" : {
@@ -2831,60 +3048,66 @@
         }
       }
     },
-    "One-time payment, no subscription" : {
+    "One-time payment, lifetime access" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One-time payment, lifetime access"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pago único, sin suscripción"
+            "value" : "Pago único, acceso de por vida"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paiement unique, pas d'abonnement"
+            "value" : "Paiement unique, accès à vie"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pembayaran satu kali, tanpa berlangganan"
+            "value" : "Bayar sekali, akses seumur hidup"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "一括払い、無加入"
+            "value" : "一度の支払いで一生使える"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "일회성 결제, 구독 없음"
+            "value" : "한 번 결제로 평생 이용"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "จ่ายครั้งเดียว ไม่ต้องสมัครสมาชิก"
+            "value" : "ชำระครั้งเดียว ใช้งานได้ตลอดชีพ"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Một thời gian, không có giấy tờ."
+            "value" : "Thanh toán một lần, truy cập trọn đời"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "一次性付款，没有订阅"
+            "value" : "一次付费，终身使用"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "一次性支付，無需訂閱"
+            "value" : "一次付費，終身使用"
           }
         }
       }
@@ -3151,7 +3374,7 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "translated",
             "value" : "Pages %1$lld - %2$lld"
           }
         },
@@ -3277,22 +3500,28 @@
     },
     "Premium" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Premio"
+            "value" : "Premium"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prime"
+            "value" : "Premium"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Premi"
+            "value" : "Premium"
           }
         },
         "ja" : {
@@ -3316,25 +3545,31 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Phần thưởng"
+            "value" : "Premium"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保险费"
+            "value" : "高级版"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保險費"
+            "value" : "高級版"
           }
         }
       }
     },
     "Premium Feature" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium Feature"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3386,65 +3621,583 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保險費特徵"
+            "value" : "高級功能"
           }
         }
       }
     },
-    "Purchased" : {
+    "Premium Unlocked" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium Unlocked"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adquirido"
+            "value" : "Premium desbloqueado"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Acheté"
+            "value" : "Premium déverrouillé"
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "dibeli"
+            "value" : "Premium Dibuka"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "購入"
+            "value" : "プレミアムがアンロックされました"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "구입완료"
+            "value" : "프리미엄이 활성화되었습니다"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ซื้อแล้ว"
+            "value" : "พรีเมียมปลดล็อกแล้ว"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đã mua"
+            "value" : "Premium đã mở khóa"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "购买"
+            "value" : "高级版已解锁"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "購買"
+            "value" : "高級版已解鎖"
+          }
+        }
+      }
+    },
+    "premium.feature.adfree.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enjoy reading without interruptions"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disfruta de la lectura sin interrupciones"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Profitez d’une lecture sans interruption"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nikmati membaca tanpa gangguan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中断のない読書を楽しめます"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "방해 없이 독서를 즐기세요"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เพลิดเพลินกับการอ่านโดยไม่ถูกรบกวน"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tận hưởng việc đọc không bị gián đoạn"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "享受无打扰的阅读"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "享受不受干擾的閱讀"
+          }
+        }
+      }
+    },
+    "premium.feature.adfree.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ad-Free Experience"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experiencia sin anuncios"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expérience sans publicité"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pengalaman tanpa iklan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "広告なしの体験"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "광고 없는 이용 경험"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ประสบการณ์ไร้โฆษณา"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trải nghiệm không quảng cáo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无广告体验"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無廣告體驗"
+          }
+        }
+      }
+    },
+    "premium.feature.books.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add as many books as you want"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega tantos libros como quieras"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoutez autant de livres que vous voulez"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tambahkan sebanyak mungkin buku yang Anda inginkan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "好きなだけ本を追加できます"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "원하는 만큼 책을 추가하세요"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เพิ่มหนังสือได้ไม่จำกัด"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm bao nhiêu sách tùy thích"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "想添加多少书都可以"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "想新增多少書都可以"
+          }
+        }
+      }
+    },
+    "premium.feature.books.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlimited Books"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Libros ilimitados"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Livres illimités"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buku tanpa batas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無制限の本"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "무제한 도서"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หนังสือไม่จำกัด"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sách không giới hạn"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无限书籍"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無限書籍"
+          }
+        }
+      }
+    },
+    "premium.feature.notes.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write notes without limits"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribe notas sin límites"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écrivez des notes sans limites"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tulis catatan tanpa batas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "制限なくメモを書けます"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제한 없이 메모를 작성하세요"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เขียนบันทึกได้ไม่จำกัด"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viết ghi chú không giới hạn"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无限制书写笔记"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無限制書寫筆記"
+          }
+        }
+      }
+    },
+    "premium.feature.notes.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlimited Notes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notas ilimitadas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notes illimitées"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Catatan tanpa batas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無制限のメモ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "무제한 메모"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บันทึกไม่จำกัด"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ghi chú không giới hạn"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无限笔记"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無限筆記"
+          }
+        }
+      }
+    },
+    "premium.feature.stats.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Track your reading progress"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sigue tu progreso de lectura"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suivez vos progrès de lecture"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lacak progres membaca Anda"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "読書の進捗を追跡できます"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "독서 진행 상황을 추적하세요"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ติดตามความคืบหน้าการอ่านของคุณ"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theo dõi tiến độ đọc của bạn"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跟踪你的阅读进度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "追蹤你的閱讀進度"
+          }
+        }
+      }
+    },
+    "premium.feature.stats.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full Reading Stats"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estadísticas de lectura completas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Statistiques de lecture complètes"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Statistik membaca lengkap"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "読書統計（全機能）"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전체 독서 통계"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สถิติการอ่านแบบเต็ม"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thống kê đọc đầy đủ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完整的阅读统计"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完整的閱讀統計"
           }
         }
       }
@@ -3643,6 +4396,12 @@
     },
     "Restore Purchases" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore Purchases"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3664,7 +4423,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "購入リストア"
+            "value" : "購入情報を復元"
           }
         },
         "ko" : {
@@ -3688,7 +4447,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "恢复采购"
+            "value" : "恢复购买"
           }
         },
         "zh-Hant" : {
@@ -4469,12 +5228,6 @@
     },
     "Title" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Title"
-          }
-        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4508,7 +5261,7 @@
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ชื่อเรื่อง"
+            "value" : "ชื่อ"
           }
         },
         "vi" : {
@@ -4533,12 +5286,6 @@
     },
     "Total Pages" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Total Pages"
-          }
-        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4554,7 +5301,7 @@
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Total halaman"
+            "value" : "Jumlah Halaman"
           }
         },
         "ja" : {
@@ -4566,7 +5313,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "총 페이지 수"
+            "value" : "총 페이지"
           }
         },
         "th" : {
@@ -4595,8 +5342,78 @@
         }
       }
     },
+    "Unlock for %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock for %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desbloquear por %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Débloquer pour %@"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dapatkan akses seharga %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ でアンロック"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@에 잠금 해제"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปลดล็อกในราคา %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở khóa với %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 购买解锁"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以 %@ 解鎖"
+          }
+        }
+      }
+    },
     "Unlock Premium" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock Premium"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4606,7 +5423,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prime de déblocage"
+            "value" : "Débloquer Premium"
           }
         },
         "id" : {
@@ -4618,7 +5435,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プレミアムロック解除"
+            "value" : "プレミアムをアンロック"
           }
         },
         "ko" : {
@@ -4642,7 +5459,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "锁保险费"
+            "value" : "解锁高级版"
           }
         },
         "zh-Hant" : {
@@ -4653,66 +5470,14 @@
         }
       }
     },
-    "Unlock Premium (%@)" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Desbloquear Premium (%@)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prime de déblocage (%@)"
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buka Kunci Premium (%@)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "プレミアムロック解除 (%@)"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "프리미엄 잠금 해제 (%@)"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ปลดล็อครายการพรีเมียม (%@)"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mở khóa Premium (%@)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "解锁高级版 (%@)"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "解鎖高級版 (%@)"
-          }
-        }
-      }
-    },
     "Unlock with Premium" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock with Premium"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4734,7 +5499,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プレミアムロック解除"
+            "value" : "プレミアムでアンロック"
           }
         },
         "ko" : {

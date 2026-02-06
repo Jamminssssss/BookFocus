@@ -155,6 +155,11 @@ struct EndPageInputView: View {
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
                             Button("Cancel") {
+                                // 위젯/라이브 액티비티 정리
+                                TimerStateManager.shared.clearState()
+                                // 라이브 액티비티 종료 신호 (ReadingTimerView가 수신하여 처리할 수 있도록 Notification 사용)
+                                NotificationCenter.default.post(name: Notification.Name("ReadingTimer.EndLiveActivity"), object: nil)
+
                                 dismiss()
                                 onCancel()
                             }
@@ -196,64 +201,70 @@ struct EndPageInputView: View {
                 }
             }
         }
+        .onDisappear {
+            // 저장이 호출되지 않은 채로 사라질 수 있는 경우를 대비한 안전망
+            // 세션 저장 플래그를 확인할 수 없으므로, 진행 중 세션의 위젯/라이브 액티비티를 정리
+            TimerStateManager.shared.clearState()
+            NotificationCenter.default.post(name: Notification.Name("ReadingTimer.EndLiveActivity"), object: nil)
+        }
     }
     
     // MARK: - Save
     private func saveSession() {
-        let trimmed = endPage.trimmingCharacters(in: .whitespaces)
-        guard let endPageInt = Int(trimmed) else {
-            errorMessage = "Please enter a valid page number."
-            showError = true
-            return
-        }
-        guard endPageInt >= startPage else {
-            errorMessage = "End page must be greater than or equal to start page."
-            showError = true
-            return
-        }
-        guard endPageInt <= book.totalPages else {
-            errorMessage = "End page cannot exceed total pages."
-            showError = true
-            return
-        }
-        
-        if !memo.isEmpty && !storeManager.isPremium {
-            errorMessage = "Premium is required to save memos."
-            showError = true
-            return
-        }
-        
-        if let session = session {
-            session.endSession(endPage: endPageInt)
-        }
-        
-        book.currentPage = endPageInt
-        book.checkCompletion()
-        
-        if !memo.isEmpty {
-            let newMemo = PageMemo(
-                startPage: startPage,
-                endPage: endPageInt,
-                memo: memo,
-                book: book
-            )
-            var memos = book.memos ?? []
-            memos.append(newMemo)
-            book.memos = memos
-            modelContext.insert(newMemo)
-        }
-        
-        if let image = tempImage,
-           let data = image.jpegData(compressionQuality: 0.8) {
-            book.coverImageData = data
-        }
-        
-        addToCalendar(startPage: startPage, endPage: endPageInt)
-        
-        dismiss()
-        onSave()
-    }
-    
+           let trimmed = endPage.trimmingCharacters(in: .whitespaces)
+           guard let endPageInt = Int(trimmed) else {
+               errorMessage = "Please enter a valid page number."
+               showError = true
+               return
+           }
+           guard endPageInt >= startPage else {
+               errorMessage = "End page must be greater than or equal to start page."
+               showError = true
+               return
+           }
+           guard endPageInt <= book.totalPages else {
+               errorMessage = "End page cannot exceed total pages."
+               showError = true
+               return
+           }
+           
+           if !memo.isEmpty && !storeManager.isPremium {
+               errorMessage = "Premium is required to save memos."
+               showError = true
+               return
+           }
+           
+           if let session = session {
+               session.endSession(endPage: endPageInt)
+           }
+           
+           book.currentPage = endPageInt
+           book.checkCompletion()
+           
+           if !memo.isEmpty {
+               let newMemo = PageMemo(
+                   startPage: startPage,
+                   endPage: endPageInt,
+                   memo: memo,
+                   book: book
+               )
+               var memos = book.memos ?? []
+               memos.append(newMemo)
+               book.memos = memos
+               modelContext.insert(newMemo)
+           }
+           
+           if let image = tempImage,
+              let data = image.jpegData(compressionQuality: 0.8) {
+               book.coverImageData = data
+           }
+           
+           addToCalendar(startPage: startPage, endPage: endPageInt)
+           
+           dismiss()
+           onSave()
+       }
+
     // MARK: - Calendar
     private func addToCalendar(startPage: Int, endPage: Int) {
         if #available(iOS 17.0, *) {
@@ -278,9 +289,12 @@ struct EndPageInputView: View {
     private func createCalendarEvent(startPage: Int, endPage: Int) {
         guard session != nil else { return }
         
-        let calendar = Calendar.current
-        let today = Date()
-        let startOfDay = calendar.startOfDay(for: today)
+        // 현재 시간대를 사용하는 캘린더 설정
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone.current
+        
+        let now = Date()
+        let startOfDay = calendar.startOfDay(for: now)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
         
         // 중복 이벤트 제거
@@ -294,20 +308,40 @@ struct EndPageInputView: View {
             }
         }
         
-        // 새 이벤트 생성
-        let bookHash = abs(book.id.uuidString.hashValue)
-        let hourOffset = bookHash % 12
-        let minuteOffset = (bookHash / 12) % 60
-        let eventStartTime = calendar.date(byAdding: .hour, value: hourOffset, to: startOfDay)!
-        let eventStartTimeWithMinutes = calendar.date(byAdding: .minute, value: minuteOffset, to: eventStartTime)!
-        let eventEndTime = calendar.date(byAdding: .hour, value: 1, to: eventStartTimeWithMinutes)!
+        // 세션 시작 시간 사용 (또는 현재 시간)
+        let eventStartTime: Date
+        if let sessionStartTime = session?.startTime {
+            eventStartTime = sessionStartTime
+        } else {
+            eventStartTime = now
+        }
+        
+        // 1시간 후를 종료 시간으로 설정
+        let eventEndTime = calendar.date(byAdding: .hour, value: 1, to: eventStartTime) ?? eventStartTime.addingTimeInterval(3600)
         
         let event = EKEvent(eventStore: eventStore)
         event.title = bookIdentifier
         event.notes = "Pages: \(startPage) - \(endPage) (\(endPage - startPage) pages read)"
-        event.startDate = eventStartTimeWithMinutes
+        event.startDate = eventStartTime
         event.endDate = eventEndTime
+        event.timeZone = TimeZone.current
         event.calendar = eventStore.defaultCalendarForNewEvents
         try? eventStore.save(event, span: .thisEvent)
     }
+    
+    // MARK: - Watch Sync
+    private func syncBookToWatch(_ book: Book) {
+        let manager = TimerStateManager.shared
+        let bookData = TimerStateManager.BookData(
+            id: book.id.uuidString,
+            title: book.title,
+            author: book.author,
+            totalPages: book.totalPages,
+            currentPage: book.currentPage,
+            createdAt: book.createdAt,
+            lastUpdated: book.lastUpdated
+        )
+        manager.updateBook(bookData)
+    }
 }
+

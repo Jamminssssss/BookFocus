@@ -105,6 +105,9 @@ struct BookListView: View {
                 }
             }
             .onAppear {
+                // ModelContext를 WatchSyncManager에 설정
+                WatchSyncManager.shared.modelContext = modelContext
+                
                 // 딥링크 알림 감지
                 NotificationCenter.default.addObserver(
                     forName: NSNotification.Name("OpenEndPageInputFromDeepLink"),
@@ -116,11 +119,46 @@ struct BookListView: View {
                 
                 // 앱이 포그라운드로 올 때 위젯 스탑 액션 체크
                 checkWidgetStopAction()
+                
+                // 워치에 모든 책 동기화
+                syncAllBooksToWatch()
+                
+                // 워치 액션 체크 및 대기 중인 세션 처리
+                checkWatchAction()
+                WatchSyncManager.shared.processPendingSessions()
+            }
+            .onChange(of: books.count) { oldCount, newCount in
+                // 책 개수가 변경되면 워치에 동기화
+                if newCount != oldCount {
+                    print("📚 책 개수 변경: \(oldCount) -> \(newCount), 워치에 동기화")
+                    syncAllBooksToWatch()
+                }
+            }
+            .onChange(of: books.map { $0.id }) { oldIDs, newIDs in
+                // 책 ID 목록이 변경되면 워치에 동기화
+                if oldIDs != newIDs {
+                    print("📚 책 목록 변경, 워치에 동기화")
+                    syncAllBooksToWatch()
+                }
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
+                if newPhase == .background {
+                    // EndPageInputView가 표시되지 않았고 진행 중 타이머가 아니라면 위젯 상태를 안전하게 정리
+                    if !showEndPageInput {
+                        let manager = TimerStateManager.shared
+                        if let state = manager.loadState(), state.isRunning == false {
+                            manager.clearState()
+                            // 라이브 액티비티 종료 알림 브로드캐스트 (ReadingTimerView에서 수신)
+                            NotificationCenter.default.post(name: Notification.Name("ReadingTimer.EndLiveActivity"), object: nil)
+                        }
+                    }
+                }
                 if oldPhase == .background && newPhase == .active {
                     // 앱이 백그라운드에서 포그라운드로 올 때 체크
                     checkWidgetStopAction()
+                    // 워치 액션 체크 및 대기 중인 세션 처리
+                    checkWatchAction()
+                    WatchSyncManager.shared.processPendingSessions()
                 }
             }
             .onDisappear {
@@ -262,6 +300,37 @@ struct BookListView: View {
         selectedBook = nil
         currentSession = nil
         showEndPageInput = false
+    }
+    
+    // MARK: - Watch Sync
+    private func syncAllBooksToWatch() {
+        let bookDataList = books.map { book in
+            TimerStateManager.BookData(
+                id: book.id.uuidString,
+                title: book.title,
+                author: book.author,
+                totalPages: book.totalPages,
+                currentPage: book.currentPage,
+                createdAt: book.createdAt,
+                lastUpdated: book.lastUpdated
+            )
+        }
+        // WatchSyncManager를 통해 워치에 전송 (내부에서 AppGroup도 저장)
+        WatchSyncManager.shared.sendBooksToWatch(bookDataList)
+        print("✅ 워치에 \(bookDataList.count)권의 책 동기화 완료")
+    }
+    
+    private func checkWatchAction() {
+        let manager = TimerStateManager.shared
+        if let action = manager.getAction() {
+            // 워치에서 세션이 저장되었을 때
+            if action == "sessionSaved" {
+                // 모든 책 다시 동기화
+                syncAllBooksToWatch()
+                // 대기 중인 세션 처리 (WatchSyncManager가 처리)
+                WatchSyncManager.shared.processPendingSessions()
+            }
+        }
     }
 }
 
