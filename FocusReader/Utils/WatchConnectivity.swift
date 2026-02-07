@@ -1,20 +1,21 @@
+// FocusReader/Utils/WatchConnectivity.swift
 import Foundation
 import WatchConnectivity
 import SwiftData
 
 final class WatchSyncManager: NSObject, WCSessionDelegate {
-
+    
     static let shared = WatchSyncManager()
-
+    
     private let appGroupID = "group.com.Jaemin.FocusReader"
     
     // SwiftData ModelContext를 외부에서 설정
     var modelContext: ModelContext?
-
+    
     private override init() {
         super.init()
     }
-
+    
     // 🔥 App에서 명시적으로 시작
     func start() {
         activate()
@@ -22,36 +23,39 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
         // AppGroup의 세션 데이터 확인
         processPendingSessions()
     }
-
+    
     // MARK: - WCSession 활성화
     private func activate() {
-        // AppDelegate에서 WCSession을 관리하므로 여기서는 활성화만 확인
-        // delegate는 AppDelegate에서 설정됨
         guard WCSession.isSupported() else {
             print("❌ WCSession not supported")
             return
         }
+        
+        let session = WCSession.default
+        session.delegate = self
+        session.activate()
+        print("📱 WCSession activation initiated")
     }
-
+    
     // MARK: - 📤 책 목록 전송
     func sendBooksToWatch(_ books: [TimerStateManager.BookData]) {
-
+        
         // 1️⃣ AppGroup에 항상 저장 (워치 fallback)
         saveBooksToAppGroup(books)
-
+        
         guard WCSession.default.isPaired,
               WCSession.default.isWatchAppInstalled else {
             print("❌ Watch not paired or not installed")
             return
         }
-
+        
         guard let data = try? JSONEncoder().encode(books) else {
             print("❌ Failed to encode books")
             return
         }
-
+        
         let payload: [String: Any] = ["books": data]
-
+        
         // 2️⃣ 도달 가능하면 즉시 전송
         if WCSession.default.isReachable {
             WCSession.default.sendMessage(payload, replyHandler: nil) { error in
@@ -64,7 +68,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
             print("📦 Sent books via transferUserInfo:", books.count)
         }
     }
-
+    
     // MARK: - 📤 반납일 그룹 알림 전송
     func sendDueReminderGroupToWatch(_ payload: WatchDueReminderScheduler.DueGroupPayload) {
         guard WCSession.default.isPaired,
@@ -72,17 +76,17 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
             print("❌ Watch not paired or not installed")
             return
         }
-
+        
         guard let payloadData = try? JSONEncoder().encode(payload) else {
             print("❌ Failed to encode due reminder group payload")
             return
         }
-
+        
         let message: [String: Any] = [
             "type": "dueReminderGroup",
             "payload": payloadData
         ]
-
+        
         // 도달 가능하면 즉시 전송
         if WCSession.default.isReachable {
             WCSession.default.sendMessage(message, replyHandler: nil) { error in
@@ -95,7 +99,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
             print("📦 Sent due reminder group via transferUserInfo:", payload.dateKey)
         }
     }
-
+    
     // MARK: - 📤 반납일 그룹 알림 취소
     func cancelDueReminderGroupOnWatch(dateKey: String) {
         guard WCSession.default.isPaired,
@@ -103,12 +107,12 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
             print("❌ Watch not paired or not installed")
             return
         }
-
+        
         let message: [String: Any] = [
             "type": "cancelDueReminderGroup",
             "dateKey": dateKey
         ]
-
+        
         // 도달 가능하면 즉시 전송
         if WCSession.default.isReachable {
             WCSession.default.sendMessage(message, replyHandler: nil) { error in
@@ -121,28 +125,28 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
             print("📦 Sent cancel due reminder group via transferUserInfo:", dateKey)
         }
     }
-
+    
     // MARK: - AppGroup 저장 (Fallback)
     private func saveBooksToAppGroup(_ books: [TimerStateManager.BookData]) {
         guard let defaults = UserDefaults(suiteName: appGroupID),
               let data = try? JSONEncoder().encode(books) else { return }
-
+        
         defaults.set(data, forKey: "books.data")
         defaults.synchronize()
-
+        
         print("💾 Books saved to AppGroup:", books.count)
     }
-
+    
     // MARK: - 이전 데이터 재전송
     private func sendCachedBooksIfNeeded() {
         guard let defaults = UserDefaults(suiteName: appGroupID),
               let data = defaults.data(forKey: "books.data"),
               let books = try? JSONDecoder().decode([TimerStateManager.BookData].self, from: data)
         else { return }
-
+        
         sendBooksToWatch(books)
     }
-
+    
     // MARK: - 📥 Watch → iOS 메시지 처리 (AppDelegate에서 호출)
     func handleWatchMessage(_ payload: [String: Any]) {
         guard let type = payload["type"] as? String else {
@@ -267,6 +271,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
     }
     
     // MARK: - AppGroup의 대기 중인 세션 처리
+    // FocusReader/Utils/WatchConnectivity.swift 의 processPendingSessions 메서드 수정
     func processPendingSessions() {
         guard let defaults = UserDefaults(suiteName: appGroupID),
               let sessions = defaults.array(forKey: "sessions.data") as? [[String: Any]],
@@ -277,9 +282,12 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
         
         print("📦 Processing \(sessions.count) pending sessions from AppGroup")
         
+        var processedCount = 0
+        
         for sessionDict in sessions {
             guard let bookIDString = sessionDict["bookID"] as? String,
                   let bookID = UUID(uuidString: bookIDString) else {
+                print("⚠️ Invalid session data, skipping")
                 continue
             }
             
@@ -293,8 +301,11 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
                   let endPage = sessionDict["endPage"] as? Int,
                   let duration = sessionDict["duration"] as? TimeInterval,
                   let startTimeInterval = sessionDict["startTime"] as? TimeInterval else {
+                print("⚠️ Book not found or invalid session data for ID: \(bookIDString)")
                 continue
             }
+            
+            print("📝 Processing session for book: \(book.title), pages: \(startPage)-\(endPage)")
             
             // 세션 생성
             let startTime = Date(timeIntervalSince1970: startTimeInterval)
@@ -304,36 +315,70 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
             
             // 책에 세션 추가
             book.addSession(session)
+            book.currentPage = endPage  // ✅ 페이지 업데이트
+            book.checkCompletion()
             modelContext.insert(session)
+            
+            processedCount += 1
         }
         
         // 저장
-        do {
-            try modelContext.save()
-            // 처리된 세션 제거
-            defaults.removeObject(forKey: "sessions.data")
-            defaults.synchronize()
-            print("✅ Processed and saved \(sessions.count) sessions from AppGroup")
-        } catch {
-            print("❌ Failed to save pending sessions: \(error)")
+        if processedCount > 0 {
+            do {
+                try modelContext.save()
+                // ✅ 처리된 세션만 제거
+                defaults.removeObject(forKey: "sessions.data")
+                defaults.synchronize()
+                print("✅ Successfully processed and saved \(processedCount)/\(sessions.count) sessions from AppGroup")
+            } catch {
+                print("❌ Failed to save pending sessions: \(error)")
+            }
+        } else {
+            print("⚠️ No valid sessions to process")
         }
     }
 
-    // MARK: - WCSessionDelegate
+    // MARK: - WCSessionDelegate (iOS 필수 메서드)
     func session(
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
     ) {
-        print("📱 WCSession activated:", activationState.rawValue)
         if let error = error {
-            print("❌ WCSession error:", error.localizedDescription)
+            print("❌ WCSession activation error:", error.localizedDescription)
+        } else {
+            print("📱 WCSession activated:", activationState.rawValue)
         }
     }
-
-    func sessionDidBecomeInactive(_ session: WCSession) {}
-
+    
+    func sessionDidBecomeInactive(_ session: WCSession) {
+        print("📱 WCSession became inactive")
+    }
+    
     func sessionDidDeactivate(_ session: WCSession) {
+        print("📱 WCSession deactivated, reactivating...")
         WCSession.default.activate()
+    }
+    
+    func sessionReachabilityDidChange(_ session: WCSession) {
+        print("📱 WCSession reachability changed: \(session.isReachable)")
+    }
+    
+    // 📥 Watch → iOS (백그라운드)
+    func session(
+        _ session: WCSession,
+        didReceiveUserInfo userInfo: [String : Any]
+    ) {
+        print("📥 Received userInfo from Watch")
+        handleWatchMessage(userInfo)
+    }
+    
+    // 📥 Watch → iOS (즉시)
+    func session(
+        _ session: WCSession,
+        didReceiveMessage message: [String : Any]
+    ) {
+        print("📥 Received message from Watch")
+        handleWatchMessage(message)
     }
 }

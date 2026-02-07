@@ -97,7 +97,43 @@ struct TimerView: View {
         // 📌 EndPageInputView 호출 시 콜백으로 book 갱신
         .sheet(isPresented: $showEndPageInput) {
             EndPageInputView(book: book, elapsedTime: elapsedTime) { updatedBook in
+                // Update local book data
                 self.book = updatedBook
+
+                // Reset timer UI state
+                self.timer?.invalidate()
+                self.timer = nil
+                self.isRunning = false
+                self.elapsedTime = 0
+
+                // Clear in-memory timer state
+                self.timerState = nil
+
+                // Clear persisted timer state so it doesn't restore on appear
+                // If your TimerStateManager has a clear method, call it; otherwise, save a cleared state.
+                if let manager = Optional(TimerStateManager.shared) {
+                    // Prefer a clear method if available
+                    // manager.clearState()
+                    // Fallback: overwrite with a non-running state for this book
+                    let cleared = TimerStateManager.TimerState(
+                        isRunning: false,
+                        bookTitle: self.book.title,
+                        currentPage: self.book.currentPage,
+                        totalPages: self.book.totalPages,
+                        elapsedTime: 0,
+                        sessionStartTime: nil,
+                        pausedTime: 0,
+                        isTimerMode: false,
+                        targetMinutes: 30,
+                        timerEndDate: nil,
+                        bookID: self.book.id
+                    )
+                    manager.saveState(cleared)
+                    manager.setAction("reset")
+                }
+
+                // Dismiss the sheet if still presented
+                self.showEndPageInput = false
             }
         }
         .onAppear {
@@ -225,3 +261,4 @@ struct TimerView: View {
             : String(format: "%d:%02d", m, s)
     }
 }
+

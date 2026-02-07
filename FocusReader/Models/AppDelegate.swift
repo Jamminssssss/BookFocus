@@ -1,11 +1,11 @@
+// FocusReader/Models/AppDelegate.swift
 import UIKit
 import UserNotifications
 import WatchConnectivity
 
 class AppDelegate: NSObject,
                    UIApplicationDelegate,
-                   UNUserNotificationCenterDelegate,
-                   WCSessionDelegate {
+                   UNUserNotificationCenterDelegate {  // ✅ WCSessionDelegate 제거
 
     func application(
         _ application: UIApplication,
@@ -26,52 +26,14 @@ class AppDelegate: NSObject,
             application.applicationIconBadgeNumber = 0
         }
 
-        // ⌚️ WatchConnectivity 활성화
-        if WCSession.isSupported() {
-            let session = WCSession.default
-            session.delegate = self
-            session.activate()
-            print("✅ WCSession activated")
-        }
+        // ⌚️ WatchConnectivity는 WatchSyncManager.start()에서 처리
+        // (더 이상 여기서 activate하지 않음)
 
         return true
     }
 
-    // MARK: - WatchConnectivity Delegate (필수)
-
-    func session(
-        _ session: WCSession,
-        activationDidCompleteWith activationState: WCSessionActivationState,
-        error: Error?
-    ) {
-        if let error = error {
-            print("❌ WCSession activation error:", error.localizedDescription)
-        } else {
-            print("⌚️ WCSession state:", activationState.rawValue)
-        }
-    }
-
-    func sessionDidBecomeInactive(_ session: WCSession) {}
-
-    func sessionDidDeactivate(_ session: WCSession) {
-        WCSession.default.activate()
-    }
-    
-    // 📥 Watch → iOS (백그라운드)
-    func session(
-        _ session: WCSession,
-        didReceiveUserInfo userInfo: [String: Any]
-    ) {
-        WatchSyncManager.shared.handleWatchMessage(userInfo)
-    }
-    
-    // 📥 Watch → iOS (즉시)
-    func session(
-        _ session: WCSession,
-        didReceiveMessage message: [String: Any]
-    ) {
-        WatchSyncManager.shared.handleWatchMessage(message)
-    }
+    // ✅ WCSessionDelegate 메서드들 모두 제거
+    // WatchSyncManager가 이제 처리합니다
 
     // MARK: - Notification Handling
 

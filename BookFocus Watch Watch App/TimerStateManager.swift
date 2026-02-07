@@ -1,14 +1,6 @@
-//
-//  TimerStateManager.swift
-//  BookFocus Watch Watch App
-//
-//  Shared state manager for watch and app
-//
-
+// BookFocus Watch Watch App/TimerStateManager.swift
 import Foundation
 
-/// AppGroup을 통한 타이머 상태 공유 매니저
-/// 워치와 앱 간의 타이머 상태를 동기화합니다
 class TimerStateManager {
     static let shared = TimerStateManager()
     
@@ -19,21 +11,34 @@ class TimerStateManager {
     
     private init() {}
     
+    // ✅ 세션 저장 시 AppGroup에도 기록
+    func saveSessionToAppGroup(_ sessionData: [String: Any]) {
+        guard let defaults = userDefaults else { return }
+        
+        var sessions = defaults.array(forKey: "sessions.data") as? [[String: Any]] ?? []
+        sessions.append(sessionData)
+        defaults.set(sessions, forKey: "sessions.data")
+        defaults.synchronize()
+        
+        print("💾 Session saved to AppGroup: \(sessions.count) total sessions")
+    }
+    
     func clearState() {
-          guard let defaults = userDefaults else { return }
+        guard let defaults = userDefaults else { return }
 
-          defaults.removeObject(forKey: Keys.isRunning)
-          defaults.removeObject(forKey: Keys.bookTitle)
-          defaults.removeObject(forKey: Keys.currentPage)
-          defaults.removeObject(forKey: Keys.totalPages)
-          defaults.removeObject(forKey: Keys.elapsedTime)
-          defaults.removeObject(forKey: Keys.sessionStartTime)
-          defaults.removeObject(forKey: Keys.pausedTime)
-          defaults.removeObject(forKey: Keys.isTimerMode)
-          defaults.removeObject(forKey: Keys.targetMinutes)
-          defaults.removeObject(forKey: Keys.timerEndDate)
-          defaults.removeObject(forKey: Keys.bookID)
-      }
+        defaults.removeObject(forKey: Keys.isRunning)
+        defaults.removeObject(forKey: Keys.bookTitle)
+        defaults.removeObject(forKey: Keys.currentPage)
+        defaults.removeObject(forKey: Keys.totalPages)
+        defaults.removeObject(forKey: Keys.elapsedTime)
+        defaults.removeObject(forKey: Keys.sessionStartTime)
+        defaults.removeObject(forKey: Keys.pausedTime)
+        defaults.removeObject(forKey: Keys.isTimerMode)
+        defaults.removeObject(forKey: Keys.targetMinutes)
+        defaults.removeObject(forKey: Keys.timerEndDate)
+        defaults.removeObject(forKey: Keys.bookID)
+        defaults.synchronize()
+    }
     
     // MARK: - Keys
     private enum Keys {
@@ -82,11 +87,9 @@ class TimerStateManager {
         var createdAt: Date
         var lastUpdated: Date
         
-        // 🔥 추가: 반납일 정보
         var checkoutDate: Date?
         var dueDate: Date?
         
-        // 🔥 추가: 반납일 알림 계산 프로퍼티
         var dueMinus1DayAtNine: Date? {
             guard let due = dueDate else { return nil }
             let d = Calendar.current.date(byAdding: .day, value: -1, to: due) ?? due

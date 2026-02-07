@@ -1,3 +1,4 @@
+// BookFocus Watch Watch App/EndPageInputView.swift
 import SwiftUI
 import WatchConnectivity
 
@@ -11,6 +12,7 @@ struct EndPageInputView: View {
     @State private var endPage: Int
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var isSaving = false
 
     private var startPage: Int { book.currentPage }
 
@@ -43,6 +45,7 @@ struct EndPageInputView: View {
                             .frame(width: 36, height: 36)
                     }
                     .buttonStyle(.bordered)
+                    .disabled(isSaving)
 
                     Text("\(endPage)")
                         .font(.system(size: 30, weight: .bold))
@@ -55,6 +58,7 @@ struct EndPageInputView: View {
                             .frame(width: 36, height: 36)
                     }
                     .buttonStyle(.bordered)
+                    .disabled(isSaving)
                 }
 
                 Spacer(minLength: 0)
@@ -64,15 +68,25 @@ struct EndPageInputView: View {
                 Button {
                     saveSession()
                 } label: {
-                    Image(systemName: "pause.fill")
-                        .font(.system(size: 16, weight: .bold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 36)
+                    HStack {
+                        if isSaving {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16, weight: .bold))
+                        }
+                        Text(isSaving ? "저장 중..." : "저장")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 36)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.mini)
                 .padding(.horizontal)
                 .padding(.bottom, 4)
+                .disabled(isSaving)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -82,6 +96,7 @@ struct EndPageInputView: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
+                    .disabled(isSaving)
                 }
             }
             .alert("오류", isPresented: $showError) {
@@ -98,16 +113,25 @@ struct EndPageInputView: View {
             showError = true
             return
         }
+        
+        guard !isSaving else {
+            print("⚠️ Already saving, ignoring duplicate save request")
+            return
+        }
+        
+        isSaving = true
+        print("🔄 Starting save process...")
 
+        // ✅ 1단계: 로컬 상태 업데이트
         let manager = TimerStateManager.shared
-
-        // 책 상태 업데이트
         var updatedBook = book
         updatedBook.currentPage = endPage
         updatedBook.lastUpdated = Date()
+        
+        print("📝 Updating book: \(updatedBook.title), page: \(endPage)")
         manager.updateBook(updatedBook)
 
-        // 세션 데이터
+        // ✅ 2단계: 세션 데이터 생성
         let startTime = Date().addingTimeInterval(-elapsedTime)
         let sessionData: [String: Any] = [
             "bookID": book.id,
@@ -117,31 +141,58 @@ struct EndPageInputView: View {
             "startTime": startTime.timeIntervalSince1970,
             "endTime": Date().timeIntervalSince1970
         ]
+        
+        print("📊 Session data created: \(startPage) → \(endPage), duration: \(elapsedTime)s")
 
-        // AppGroup 저장
-        if let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader") {
-            var sessions = defaults.array(forKey: "sessions.data") as? [[String: Any]] ?? []
-            sessions.append(sessionData)
-            defaults.set(sessions, forKey: "sessions.data")
-        }
+        // ✅ 3단계: AppGroup 저장 (폴백 - 항상 실행)
+        saveToAppGroup(sessionData: sessionData)
 
-        // iPhone 전송
+        // ✅ 4단계: iPhone 전송 (비동기)
         sendSessionToApp(sessionData: sessionData, updatedBook: updatedBook)
 
-        // 콜백으로 TimerView에 갱신 전달
+        // ✅ 5단계: 콜백 및 정리
         onSave?(updatedBook)
-
         manager.clearState()
-        dismiss()
+        
+        print("✅ Save process completed")
+        
+        // ✅ 딜레이를 늘려서 전송이 완료될 시간 확보
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            isSaving = false
+            dismiss()
+        }
+    }
+    
+    // ✅ AppGroup 저장 (폴백 메커니즘 - 개선)
+    private func saveToAppGroup(sessionData: [String: Any]) {
+        guard let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader") else {
+            print("❌ Failed to access AppGroup")
+            return
+        }
+        
+        var sessions = defaults.array(forKey: "sessions.data") as? [[String: Any]] ?? []
+        sessions.append(sessionData)
+        defaults.set(sessions, forKey: "sessions.data")
+        
+        // ✅ 즉시 동기화
+        let synced = defaults.synchronize()
+        print("💾 Session saved to AppGroup (fallback): \(synced ? "SUCCESS" : "FAILED")")
+        
+        // ✅ 저장 확인
+        if let savedSessions = defaults.array(forKey: "sessions.data") as? [[String: Any]] {
+            print("✅ AppGroup now has \(savedSessions.count) session(s)")
+        }
     }
 
+    // ✅ 개선된 전송 메서드
     private func sendSessionToApp(sessionData: [String: Any], updatedBook: TimerStateManager.BookData) {
-        let session = WCSession.default
-
         guard
             let sessionJSON = try? JSONSerialization.data(withJSONObject: sessionData),
             let bookJSON = try? JSONEncoder().encode(updatedBook)
-        else { return }
+        else {
+            print("❌ Failed to encode session or book data")
+            return
+        }
 
         let payload: [String: Any] = [
             "type": "sessionSaved",
@@ -149,12 +200,14 @@ struct EndPageInputView: View {
             "book": bookJSON
         ]
 
-        if session.isReachable {
-            session.sendMessage(payload, replyHandler: nil) { _ in
-                session.transferUserInfo(payload)
-            }
-        } else {
-            session.transferUserInfo(payload)
-        }
+        print("📤 Attempting to send session to app...")
+        
+        // ✅ WCSession 상태 확인
+        let session = WCSession.default
+        print("📡 WCSession state - Activated: \(session.activationState.rawValue), Reachable: \(session.isReachable)")
+        
+        // ✅ WatchSessionManager를 통해 전송 (재시도 로직 포함)
+        WatchSessionManager.shared.sendMessage(payload)
+        print("📤 Session sent to app via WatchSessionManager")
     }
 }

@@ -108,6 +108,9 @@ struct BookListView: View {
                 // ModelContext를 WatchSyncManager에 설정
                 WatchSyncManager.shared.modelContext = modelContext
                 
+                // ✅ AppGroup 세션 즉시 처리
+                WatchSyncManager.shared.processPendingSessions()
+                
                 // 딥링크 알림 감지
                 NotificationCenter.default.addObserver(
                     forName: NSNotification.Name("OpenEndPageInputFromDeepLink"),
@@ -123,9 +126,8 @@ struct BookListView: View {
                 // 워치에 모든 책 동기화
                 syncAllBooksToWatch()
                 
-                // 워치 액션 체크 및 대기 중인 세션 처리
+                // 워치 액션 체크
                 checkWatchAction()
-                WatchSyncManager.shared.processPendingSessions()
             }
             .onChange(of: books.count) { oldCount, newCount in
                 // 책 개수가 변경되면 워치에 동기화
@@ -153,12 +155,24 @@ struct BookListView: View {
                         }
                     }
                 }
+                
                 if oldPhase == .background && newPhase == .active {
-                    // 앱이 백그라운드에서 포그라운드로 올 때 체크
-                    checkWidgetStopAction()
-                    // 워치 액션 체크 및 대기 중인 세션 처리
-                    checkWatchAction()
+                    // ✅ 앱이 백그라운드에서 포그라운드로 올 때
+                    
+                    // AppGroup 세션 처리
                     WatchSyncManager.shared.processPendingSessions()
+                    
+                    // 위젯 스탑 액션 체크
+                    checkWidgetStopAction()
+                    
+                    // 워치 액션 체크
+                    checkWatchAction()
+                    
+                    // ✅ 광고 표시 (약간의 딜레이)
+                    Task {
+                        try? await Task.sleep(nanoseconds: 300_000_000) // 0.3초
+                        await appOpenAdManager.showAdIfAvailable()
+                    }
                 }
             }
             .onDisappear {
@@ -175,19 +189,8 @@ struct BookListView: View {
                     hasShownInitialAd = true
                 }
             }
-            // ✅ Scene Phase 변화 감지 (백그라운드 → 포그라운드 복귀 시)
-                       .onChange(of: scenePhase) {
-                           // 백그라운드에서 돌아올 때만 광고 표시 (쿨타임 체크 포함)
-                           if scenePhase == .active {
-                               Task {
-                                   // 약간의 딜레이로 자연스러운 전환
-                                   try? await Task.sleep(nanoseconds: 300_000_000) // 0.3초
-                                   await appOpenAdManager.showAdIfAvailable()
-                               }
-                           }
-                       }
-                   }
-               }
+        }
+    }
     
     // MARK: - Add Book Logic (Premium Gate)
     private func handleAddBookTap() {
