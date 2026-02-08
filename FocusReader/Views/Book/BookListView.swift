@@ -8,8 +8,6 @@ struct BookListView: View {
     @Query(sort: \Book.createdAt, order: .reverse) private var books: [Book]
 
     @State private var showAddBook = false
-    @State private var currentIndex = 0
-    @State private var showDetails = false
     
     // 딥링크 처리
     @State private var showEndPageInput = false
@@ -49,29 +47,20 @@ struct BookListView: View {
                     if books.isEmpty {
                         emptyStateView
                     } else {
-                        VStack(spacing: 0) {
-                            TabView(selection: $currentIndex) {
-                                ForEach(Array(books.enumerated()), id: \.element.id) { index, book in
-                                    BookCardView(
-                                        book: book,
-                                        onDelete: { deleteBook(book) },
-                                        showDetails: $showDetails,
-                                        isIPad: isIPad
-                                    )
-                                    .tag(index)
-                                }
-                            }
-                            .tabViewStyle(
-                                .page(
-                                    indexDisplayMode: books.count > 1 ? .automatic : .never
+                        List {
+                            ForEach(books) { book in
+                                BookRowView(
+                                    book: book,
+                                    isIPad: isIPad,
+                                    modelContext: modelContext
                                 )
-                            )
-                            .onChange(of: currentIndex) { _, _ in
-                                showDetails = false
+                                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                                .listRowBackground(Color.clear)
                             }
-
-                            bottomInfoView
+                            .onDelete(perform: deleteBooks)
                         }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
                     }
                 }
 
@@ -225,24 +214,15 @@ struct BookListView: View {
         .padding(40)
     }
 
-    // MARK: - Bottom Info
-    private var bottomInfoView: some View {
-        VStack {
-            if books.count > 1 {
-                Text("\(currentIndex + 1) / \(books.count)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 8)
-            }
-        }
-        .background(Color(.systemBackground))
-    }
-
-    private func deleteBook(_ book: Book) {
+    // MARK: - Delete Books
+    private func deleteBooks(at offsets: IndexSet) {
         withAnimation {
-            book.sessions?.forEach { modelContext.delete($0) }
-            book.memos?.forEach { modelContext.delete($0) }
-            modelContext.delete(book)
+            for index in offsets {
+                let book = books[index]
+                book.sessions?.forEach { modelContext.delete($0) }
+                book.memos?.forEach { modelContext.delete($0) }
+                modelContext.delete(book)
+            }
             try? modelContext.save()
         }
     }
@@ -338,15 +318,19 @@ struct BookListView: View {
 }
 
 
-// MARK: - Book Card View
-struct BookCardView: View {
+// MARK: - Book Row View
+struct BookRowView: View {
     let book: Book
-    let onDelete: () -> Void
-    @Binding var showDetails: Bool
     let isIPad: Bool
+    let modelContext: ModelContext
     
-    @State private var showInfoOverlay = false
+    @State private var showMemoSheet = false
     @State private var showRereadSheet = false
+    
+    private var hasMemos: Bool {
+        guard let memos = book.memos else { return false }
+        return !memos.isEmpty
+    }
     
     private var isCompleted: Bool {
         book.currentPage >= book.totalPages
@@ -354,71 +338,85 @@ struct BookCardView: View {
     
     private var coverSize: CGSize {
         isIPad
-        ? CGSize(width: 480, height: 680)
-        : CGSize(width: 280, height: 400)
+        ? CGSize(width: 100, height: 140)
+        : CGSize(width: 70, height: 100)
     }
     
     var body: some View {
-        GeometryReader { geo in
-            ScrollView {
-                VStack {
-                    Spacer(minLength: 20)
-                    
-                    bookCoverWithOverlay
-                        .offset(y: showDetails ? -12 : 0)
-                        .scaleEffect(showDetails ? 1.03 : 1.0)
-                        .animation(
-                            .spring(response: 0.4, dampingFraction: 0.85),
-                            value: showDetails
-                        )
-                        .onTapGesture {
-                            handleTap()
+        NavigationLink(destination: destinationView) {
+            HStack(spacing: 16) {
+                // 책 표지 이미지
+                coverImageView
+                    .onTapGesture {
+                        if hasMemos {
+                            showMemoSheet = true
                         }
+                    }
+                
+                // 책 정보
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(book.title)
+                        .font(isIPad ? .title2 : .headline)
+                        .fontWeight(.bold)
+                        .lineLimit(2)
                     
-                    if showDetails {
-                        actionButtonsView
-                            .padding(.top, isIPad ? 32 : 24)
-                            .padding(.bottom, isIPad ? 100 : 80)
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                    Text(book.author)
+                        .font(isIPad ? .body : .subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                    
+                    HStack(spacing: 12) {
+                        Label(pageText, systemImage: "doc.text.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Label(totalReadingTime, systemImage: "clock.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                     
-                    Spacer(minLength: 20)
+                    if isCompleted {
+                        Text("finished")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.green)
+                            .cornerRadius(8)
+                    }
                 }
-                .frame(minHeight: geo.size.height)
+                
+                Spacer()
             }
-            .frame(width: geo.size.width, height: geo.size.height)
+            .padding(.vertical, 8)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .sheet(isPresented: $showMemoSheet) {
+            MemoTimelineView(book: book)
         }
         .sheet(isPresented: $showRereadSheet) {
             RereadStartPageSheet(book: book, isPresented: $showRereadSheet)
         }
     }
     
-    // MARK: - Tap Logic
-    private func handleTap() {
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-            showDetails.toggle()
-            showInfoOverlay = showDetails
-        }
-    }
-    
-    // MARK: - Book Cover + Overlay
-    private var bookCoverWithOverlay: some View {
-        ZStack {
-            coverImage
-                .drawingGroup()
-            
-            if isCompleted && !showDetails {
-                completedOverlay
+    // MARK: - Destination View
+    private var destinationView: some View {
+        Group {
+            if isCompleted {
+                // 완독한 책은 다시읽기 시트 표시 후 타이머로 이동
+                Color.clear
+                    .onAppear {
+                        showRereadSheet = true
+                    }
+            } else {
+                ReadingTimerView(book: book)
             }
-            
-            infoOverlay
-                .opacity(showInfoOverlay ? 1 : 0)
-                .allowsHitTesting(showInfoOverlay)
         }
-        .frame(width: coverSize.width, height: coverSize.height)
     }
     
-    private var coverImage: some View {
+    // MARK: - Cover Image
+    private var coverImageView: some View {
         Group {
             if let data = book.coverImageData,
                let uiImage = UIImage(data: data) {
@@ -426,7 +424,7 @@ struct BookCardView: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                RoundedRectangle(cornerRadius: 20)
+                RoundedRectangle(cornerRadius: 12)
                     .fill(
                         LinearGradient(
                             colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
@@ -436,148 +434,29 @@ struct BookCardView: View {
                     )
                     .overlay {
                         Image(systemName: "book.closed")
-                            .font(.system(size: isIPad ? 120 : 80))
+                            .font(.system(size: isIPad ? 40 : 28))
                             .foregroundStyle(.white.opacity(0.5))
                     }
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(
-            color: .black.opacity(showDetails ? 0.2 : 0.3),
-            radius: showDetails ? 12 : 20,
-            y: showDetails ? 6 : 10
+        .frame(width: coverSize.width, height: coverSize.height)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.2), radius: 5, y: 3)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(hasMemos ? Color.blue.opacity(0.5) : Color.clear, lineWidth: 2)
         )
-    }
-    
-    // MARK: - Info Overlay
-    private var infoOverlay: some View {
-        RoundedRectangle(cornerRadius: 20)
-            .fill(Color.black.opacity(0.8))
-            .overlay {
-                VStack(spacing: 18) {
-                    // Title
-                    HStack(spacing: 8) {
-                        Image(systemName: "book.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(.white.opacity(0.9))
-                        
-                        Text(book.title)
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                    }
-                    
-                    // Author
-                    HStack(spacing: 8) {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.8))
-                        
-                        Text(book.author)
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                    
-                    Divider()
-                        .background(Color.white.opacity(0.3))
-                        .padding(.horizontal, 20)
-                    
-                    // Pages
-                    HStack(spacing: 8) {
-                        Image(systemName: "doc.text.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.8))
-                        
-                        Text(pageText)
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.8))
-                    }
-                    
-                    // Reading Time
-                    HStack(spacing: 8) {
-                        Image(systemName: "clock.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.8))
-                        
-                        Text(totalReadingTime)
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.8))
-                    }
-                }
-                .padding(24)
-            }
-    }
-    
-    // MARK: - Completed Overlay
-    private var completedOverlay: some View {
-        RoundedRectangle(cornerRadius: 20)
-            .fill(Color.clear)
-            .overlay {
-                Text("finished")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-            }
-    }
-    
-    // MARK: - Action Buttons
-    private var actionButtonsView: some View {
-        HStack(spacing: 14) {
-            if isCompleted {
-                Button {
-                    showRereadSheet = true
-                } label: {
-                    ActionButton(
-                        icon: "arrow.clockwise",
-                        title: "action_reread",
-                        role: nil,
-                        isIPad: isIPad
-                    )
-                }
-            } else {
-                NavigationLink(destination: ReadingTimerView(book: book)) {
-                    ActionButton(
-                        icon: "play.fill",
-                        title: "action_read",
-                        role: nil,
-                        isIPad: isIPad
-                    )
-                }
-            }
-            
-            NavigationLink(destination: MemoTimelineView(book: book)) {
-                ActionButton(
-                    icon: "square.and.pencil",
-                    title: "action_memos",
-                    role: nil,
-                    isIPad: isIPad
-                )
-            }
-            
-            Button(role: .destructive, action: onDelete) {
-                ActionButton(
-                    icon: "trash",
-                    title: "action_delete",
-                    role: .destructive,
-                    isIPad: isIPad
-                )
-            }
-        }
     }
     
     // MARK: - Computed Properties
     private var pageText: String {
         let currentPages = book.currentPage
         let totalPages = book.totalPages
-        let pageUnitKey = totalPages == 1 ? "page_singular" : "page_plural"
-        let pageUnit = NSLocalizedString(pageUnitKey, comment: "Page unit")
-        
-        return String(format: "%d / %d %@", currentPages, totalPages, pageUnit)
+        return "\(currentPages) / \(totalPages)"
     }
     
     private var totalReadingTime: String {
-        guard let sessions = book.sessions else { return formatTime(minutes: 0) }
+        guard let sessions = book.sessions else { return "0m" }
         let totalSeconds = sessions.reduce(0) { $0 + $1.duration }
         let totalMinutes = Int(totalSeconds / 60)
         return formatTime(minutes: totalMinutes)
@@ -587,17 +466,14 @@ struct BookCardView: View {
         let hours = minutes / 60
         let mins = minutes % 60
         
-        let hourUnit = NSLocalizedString(hours == 1 ? "hour_singular" : "hour_plural", comment: "Hour unit")
-        let minUnit = NSLocalizedString(mins == 1 ? "minute_singular" : "minute_plural", comment: "Minute unit")
-        
         if hours > 0 {
             if mins > 0 {
-                return String(format: "%d%@ %d%@", hours, hourUnit, mins, minUnit)
+                return "\(hours)h \(mins)m"
             } else {
-                return String(format: "%d%@", hours, hourUnit)
+                return "\(hours)h"
             }
         } else {
-            return String(format: "%d%@", mins, minUnit)
+            return "\(mins)m"
         }
     }
 }
@@ -704,43 +580,6 @@ struct RereadStartPageSheet: View {
         isPresented = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             navigateToTimer = true
-        }
-    }
-}
-
-// MARK: - Action Button
-struct ActionButton: View {
-    let icon: String
-    let title: LocalizedStringKey
-    let role: ButtonRole?
-    let isIPad: Bool
-    
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: isIPad ? 20 : 18, weight: .semibold))
-            
-            Text(title)
-                .font(.system(size: isIPad ? 15 : 13, weight: .semibold))
-        }
-        .foregroundStyle(foregroundColor)
-        .padding(.horizontal, isIPad ? 20 : 16)
-        .padding(.vertical, isIPad ? 14 : 12)
-        .background(backgroundColor)
-        .clipShape(Capsule())
-    }
-    
-    private var foregroundColor: Color {
-        switch role {
-        case .destructive: return .red
-        default: return .primary
-        }
-    }
-    
-    private var backgroundColor: Color {
-        switch role {
-        case .destructive: return Color.red.opacity(0.12)
-        default: return Color.primary.opacity(0.06)
         }
     }
 }

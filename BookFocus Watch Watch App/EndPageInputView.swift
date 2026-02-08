@@ -1,4 +1,10 @@
-// BookFocus Watch Watch App/EndPageInputView.swift
+//
+//  EndPageInputView.swift
+//  BookFocus Watch Watch App
+//
+//  Refactored: Shows start page, saves end page, and triggers ContentView refresh
+//
+
 import SwiftUI
 import WatchConnectivity
 
@@ -16,7 +22,11 @@ struct EndPageInputView: View {
 
     private var startPage: Int { book.currentPage }
 
-    init(book: TimerStateManager.BookData, elapsedTime: TimeInterval, onSave: ((TimerStateManager.BookData) -> Void)? = nil) {
+    init(
+        book: TimerStateManager.BookData,
+        elapsedTime: TimeInterval,
+        onSave: ((TimerStateManager.BookData) -> Void)? = nil
+    ) {
         self.book = book
         self.elapsedTime = elapsedTime
         self.onSave = onSave
@@ -25,91 +35,110 @@ struct EndPageInputView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 8) {
-
-                Text(book.title)
-                    .font(.headline)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 4)
-
-                Text("마지막 페이지")
+            VStack(spacing: 0) {
+                // End Page Label (moved to top)
+                Text("End Page")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .padding(.top, 8)
 
-                HStack(spacing: 14) {
+                // End Page Input
+                HStack(spacing: 10) {
                     Button {
                         endPage = max(startPage, endPage - 1)
                     } label: {
                         Image(systemName: "minus")
-                            .frame(width: 36, height: 36)
+                            .font(.system(size: 14))
+                            .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.bordered)
-                    .disabled(isSaving)
+                    .disabled(isSaving || endPage <= startPage)
 
                     Text("\(endPage)")
-                        .font(.system(size: 30, weight: .bold))
+                        .font(.system(size: 26, weight: .bold))
                         .frame(minWidth: 44)
 
                     Button {
                         endPage = min(book.totalPages, endPage + 1)
                     } label: {
                         Image(systemName: "plus")
-                            .frame(width: 36, height: 36)
+                            .font(.system(size: 14))
+                            .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.bordered)
-                    .disabled(isSaving)
+                    .disabled(isSaving || endPage >= book.totalPages)
                 }
+                .padding(.top, 12)
 
                 Spacer(minLength: 0)
-            }
-            .padding(.horizontal)
-            .safeAreaInset(edge: .bottom) {
+                
+                // Save Button
                 Button {
                     saveSession()
                 } label: {
-                    HStack {
+                    HStack(spacing: 4) {
                         if isSaving {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .scaleEffect(0.7)
+                                .scaleEffect(0.6)
                         } else {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 16, weight: .bold))
+                                .font(.system(size: 14))
                         }
-                        Text(isSaving ? "저장 중..." : "저장")
+                        Text(isSaving ? "Saving..." : "Save")
+                            .font(.caption)
+                            .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 36)
+                    .frame(height: 32)
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.mini)
-                .padding(.horizontal)
-                .padding(.bottom, 4)
-                .disabled(isSaving)
+                .controlSize(.small)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+                .disabled(isSaving || endPage < startPage || endPage > book.totalPages)
             }
+            .padding(.horizontal, 8)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
-                        dismiss()
+                        handleDismiss()
                     } label: {
                         Image(systemName: "xmark")
+                            .font(.system(size: 14))
                     }
                     .disabled(isSaving)
                 }
             }
-            .alert("오류", isPresented: $showError) {
-                Button("확인", role: .cancel) {}
+            .alert("Error", isPresented: $showError) {
+                Button("OK", role: .cancel) {}
             } message: {
                 Text(errorMessage)
             }
         }
     }
+    
+    // MARK: - Dismiss Handler
+    
+    private func handleDismiss() {
+        // Reset timer for this book without saving
+        TimerViewModel.shared.stopTimer(for: book.id)
+        dismiss()
+    }
+
+    // MARK: - Save Session
 
     private func saveSession() {
+        // Validation
         guard endPage >= startPage else {
-            errorMessage = "마지막 페이지는 시작 페이지보다 작을 수 없습니다."
+            errorMessage = "End page must be greater than or equal to start page."
+            showError = true
+            return
+        }
+        
+        guard endPage <= book.totalPages else {
+            errorMessage = "End page cannot exceed total pages."
             showError = true
             return
         }
@@ -121,17 +150,19 @@ struct EndPageInputView: View {
         
         isSaving = true
         print("🔄 Starting save process...")
+        print("📖 Book: \(book.title)")
+        print("📄 Pages: \(startPage) → \(endPage)")
+        print("⏱ Duration: \(formatTime(elapsedTime))")
 
-        // ✅ 1단계: 로컬 상태 업데이트
-        let manager = TimerStateManager.shared
+        // 1️⃣ Update local book state
         var updatedBook = book
         updatedBook.currentPage = endPage
         updatedBook.lastUpdated = Date()
         
-        print("📝 Updating book: \(updatedBook.title), page: \(endPage)")
-        manager.updateBook(updatedBook)
+        TimerStateManager.shared.updateBook(updatedBook)
+        print("✅ Local book state updated")
 
-        // ✅ 2단계: 세션 데이터 생성
+        // 2️⃣ Create session data
         let startTime = Date().addingTimeInterval(-elapsedTime)
         let sessionData: [String: Any] = [
             "bookID": book.id,
@@ -141,29 +172,27 @@ struct EndPageInputView: View {
             "startTime": startTime.timeIntervalSince1970,
             "endTime": Date().timeIntervalSince1970
         ]
-        
-        print("📊 Session data created: \(startPage) → \(endPage), duration: \(elapsedTime)s")
 
-        // ✅ 3단계: AppGroup 저장 (폴백 - 항상 실행)
+        // 3️⃣ Save to AppGroup (fallback mechanism)
         saveToAppGroup(sessionData: sessionData)
 
-        // ✅ 4단계: iPhone 전송 (비동기)
+        // 4️⃣ Send to iPhone app
         sendSessionToApp(sessionData: sessionData, updatedBook: updatedBook)
 
-        // ✅ 5단계: 콜백 및 정리
+        // 5️⃣ Callback and cleanup
         onSave?(updatedBook)
-        manager.clearState()
         
         print("✅ Save process completed")
         
-        // ✅ 딜레이를 늘려서 전송이 완료될 시간 확보
+        // Delay dismiss to ensure sync completes
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             isSaving = false
             dismiss()
         }
     }
     
-    // ✅ AppGroup 저장 (폴백 메커니즘 - 개선)
+    // MARK: - AppGroup Fallback
+    
     private func saveToAppGroup(sessionData: [String: Any]) {
         guard let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader") else {
             print("❌ Failed to access AppGroup")
@@ -174,17 +203,16 @@ struct EndPageInputView: View {
         sessions.append(sessionData)
         defaults.set(sessions, forKey: "sessions.data")
         
-        // ✅ 즉시 동기화
         let synced = defaults.synchronize()
-        print("💾 Session saved to AppGroup (fallback): \(synced ? "SUCCESS" : "FAILED")")
+        print("💾 Session saved to AppGroup (fallback): \(synced ? "✅ SUCCESS" : "❌ FAILED")")
         
-        // ✅ 저장 확인
         if let savedSessions = defaults.array(forKey: "sessions.data") as? [[String: Any]] {
-            print("✅ AppGroup now has \(savedSessions.count) session(s)")
+            print("   AppGroup now has \(savedSessions.count) session(s)")
         }
     }
 
-    // ✅ 개선된 전송 메서드
+    // MARK: - Send to iPhone
+    
     private func sendSessionToApp(sessionData: [String: Any], updatedBook: TimerStateManager.BookData) {
         guard
             let sessionJSON = try? JSONSerialization.data(withJSONObject: sessionData),
@@ -200,14 +228,28 @@ struct EndPageInputView: View {
             "book": bookJSON
         ]
 
-        print("📤 Attempting to send session to app...")
+        print("📤 Attempting to send session to iPhone app...")
         
-        // ✅ WCSession 상태 확인
         let session = WCSession.default
-        print("📡 WCSession state - Activated: \(session.activationState.rawValue), Reachable: \(session.isReachable)")
+        print("📡 WCSession - Activated: \(session.activationState.rawValue), Reachable: \(session.isReachable)")
         
-        // ✅ WatchSessionManager를 통해 전송 (재시도 로직 포함)
         WatchSessionManager.shared.sendMessage(payload)
-        print("📤 Session sent to app via WatchSessionManager")
+        print("📤 Session sent via WatchSessionManager")
+    }
+    
+    // MARK: - Helpers
+    
+    private func formatTime(_ time: TimeInterval) -> String {
+        let h = Int(time) / 3600
+        let m = Int(time) / 60 % 60
+        let s = Int(time) % 60
+        
+        if h > 0 {
+            return String(format: "%dh %dm %ds", h, m, s)
+        } else if m > 0 {
+            return String(format: "%dm %ds", m, s)
+        } else {
+            return String(format: "%ds", s)
+        }
     }
 }
