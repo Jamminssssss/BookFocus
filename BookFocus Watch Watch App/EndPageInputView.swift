@@ -3,6 +3,7 @@
 //  BookFocus Watch Watch App
 //
 //  Refactored: Shows start page, saves end page, and triggers ContentView refresh
+//  Updated: Ensures lastUpdated is set for proper data sync
 //
 
 import SwiftUI
@@ -157,7 +158,9 @@ struct EndPageInputView: View {
         // 1️⃣ Update local book state
         var updatedBook = book
         updatedBook.currentPage = endPage
-        updatedBook.lastUpdated = Date()
+        updatedBook.lastUpdated = Date()  // ✅ 중요: lastUpdated 업데이트!
+        
+        print("⏰ Updated lastUpdated: \(updatedBook.lastUpdated)")
         
         TimerStateManager.shared.updateBook(updatedBook)
         print("✅ Local book state updated")

@@ -115,6 +115,7 @@ struct EndPageInputView: View {
                                         .scaledToFit()
                                         .frame(height: 150)
                                         .cornerRadius(8)
+                                        .frame(maxWidth: .infinity, alignment: .center)
                                 } else if let data = book.coverImageData,
                                           let uiImage = UIImage(data: data) {
                                     Image(uiImage: uiImage)
@@ -122,12 +123,14 @@ struct EndPageInputView: View {
                                         .scaledToFit()
                                         .frame(height: 150)
                                         .cornerRadius(8)
+                                        .frame(maxWidth: .infinity, alignment: .center)
                                 } else {
                                     Rectangle()
                                         .fill(Color.gray.opacity(0.3))
                                         .frame(height: 150)
                                         .cornerRadius(8)
                                         .overlay(Text("No Image").foregroundColor(.gray))
+                                        .frame(maxWidth: .infinity, alignment: .center)
                                 }
                             }
                             

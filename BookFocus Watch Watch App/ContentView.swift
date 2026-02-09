@@ -3,6 +3,7 @@
 //  BookFocus Watch Watch App
 //
 //  Refactored: Timer controls integrated directly in book list
+//  Updated: Added page information display (current/total pages)
 //
 
 import SwiftUI
@@ -132,9 +133,13 @@ struct ContentView: View {
     }
     
     private func handleBookUpdate(_ updatedBook: TimerStateManager.BookData) {
-        // Update local book list
+        print("🔄 handleBookUpdate called for: \(updatedBook.title)")
+        print("   Updated page: \(updatedBook.currentPage)")
+        
+        // Update local book list immediately
         if let index = books.firstIndex(where: { $0.id == updatedBook.id }) {
             books[index] = updatedBook
+            print("✅ Local books array updated at index \(index)")
         }
         
         // Clear timer state for this book
@@ -145,8 +150,11 @@ struct ContentView: View {
         showEndPageInput = false
         wasShowingEndPageInput = false
         
-        // Reload books to ensure sync
-        loadBooks()
+        // Force reload from TimerStateManager to ensure sync
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            loadBooks()
+            print("🔄 Books reloaded after update")
+        }
         
         print("✅ Book updated: \(updatedBook.title), Page: \(updatedBook.currentPage)")
     }
@@ -183,6 +191,9 @@ struct ContentView: View {
                 
                 // Reload books to refresh UI
                 loadBooks()
+            } else {
+                // Also reload when returning from background
+                loadBooks()
             }
         }
     }
@@ -205,10 +216,25 @@ struct BookRowView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Book Title
-            Text(book.title)
-                .font(.headline)
-                .lineLimit(2)
+            // Book Title + Page Info
+            HStack(alignment: .top, spacing: 8) {
+                Text(book.title)
+                    .font(.headline)
+                    .lineLimit(2)
+                
+                Spacer(minLength: 4)
+                
+                // Page Information
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(book.currentPage)")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(pageColor)
+                    
+                    Text("/ \(book.totalPages)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.gray)
+                }
+            }
             
             // Timer Display
             if elapsedTime > 0 || isRunning {
@@ -260,6 +286,24 @@ struct BookRowView: View {
         }
         .padding(.vertical, 4)
     }
+    
+    // MARK: - Page Color
+    
+    private var pageColor: Color {
+        let progress = Double(book.currentPage) / Double(book.totalPages)
+        switch progress {
+        case 0..<0.3:
+            return .red
+        case 0.3..<0.7:
+            return .orange
+        case 0.7..<1.0:
+            return .green
+        default:
+            return .blue // 완료
+        }
+    }
+    
+    // MARK: - Format Time
     
     private func formatTime(_ time: TimeInterval) -> String {
         let h = Int(time) / 3600

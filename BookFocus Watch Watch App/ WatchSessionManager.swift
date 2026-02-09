@@ -167,9 +167,10 @@ final class WatchSessionManager: NSObject, WCSessionDelegate, ObservableObject {
         handleBooks(payload)
     }
 
+    // ✨ 수정된 부분: 병합 로직 추가
     private func handleBooks(_ payload: [String: Any]) {
         guard let data = payload["books"] as? Data,
-              let books = try? JSONDecoder().decode(
+              let receivedBooks = try? JSONDecoder().decode(
                 [TimerStateManager.BookData].self,
                 from: data
               )
@@ -178,8 +179,36 @@ final class WatchSessionManager: NSObject, WCSessionDelegate, ObservableObject {
             return
         }
 
-        TimerStateManager.shared.saveBooks(books)
-        print("📚 Watch received books:", books.count)
+        print("📥 Received \(receivedBooks.count) books from iPhone")
+        
+        // ✨ Watch의 로컬 데이터 로드
+        let localBooks = TimerStateManager.shared.loadBooks()
+        
+        // ✨ 병합: 각 책의 최신 데이터 사용
+        var mergedBooks: [TimerStateManager.BookData] = []
+        
+        for receivedBook in receivedBooks {
+            if let localBook = localBooks.first(where: { $0.id == receivedBook.id }) {
+                // 같은 책이 로컬에 있으면 lastUpdated 비교
+                if localBook.lastUpdated > receivedBook.lastUpdated {
+                    // Watch 데이터가 더 최신
+                    mergedBooks.append(localBook)
+                    print("  ✅ \(localBook.title): Using Watch data (page \(localBook.currentPage)) - newer than iPhone")
+                } else {
+                    // iPhone 데이터가 더 최신
+                    mergedBooks.append(receivedBook)
+                    print("  📱 \(receivedBook.title): Using iPhone data (page \(receivedBook.currentPage))")
+                }
+            } else {
+                // 로컬에 없는 새 책
+                mergedBooks.append(receivedBook)
+                print("  🆕 \(receivedBook.title): New book from iPhone")
+            }
+        }
+        
+        // ✨ 병합된 데이터 저장
+        TimerStateManager.shared.saveBooks(mergedBooks)
+        print("📚 Merged books saved: \(mergedBooks.count) books")
     }
     
     // MARK: - 반납일 그룹 알림 처리
