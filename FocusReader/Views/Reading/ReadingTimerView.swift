@@ -605,4 +605,3 @@ struct TimerPickerView: View {
         }
     }
 }
-

@@ -94,11 +94,16 @@ struct BookListView: View {
                 }
             }
             .onAppear {
+                print("📱 북 리스트 onAppear - 워치 동기화 시작")
+                
                 // ModelContext를 WatchSyncManager에 설정
                 WatchSyncManager.shared.modelContext = modelContext
                 
                 // ✅ AppGroup 세션 즉시 처리
                 WatchSyncManager.shared.processPendingSessions()
+                
+                // ⌚️ 워치에 모든 책 동기화 (앱 실행 시)
+                syncAllBooksToWatch()
                 
                 // 딥링크 알림 감지
                 NotificationCenter.default.addObserver(
@@ -111,9 +116,6 @@ struct BookListView: View {
                 
                 // 앱이 포그라운드로 올 때 위젯 스탑 액션 체크
                 checkWidgetStopAction()
-                
-                // 워치에 모든 책 동기화
-                syncAllBooksToWatch()
                 
                 // 워치 액션 체크
                 checkWatchAction()
@@ -132,6 +134,13 @@ struct BookListView: View {
                     syncAllBooksToWatch()
                 }
             }
+            .onChange(of: books.map { "\($0.id)-\($0.currentPage)-\($0.lastUpdated)" }) { oldData, newData in
+                // 책 페이지나 업데이트 시간이 변경되면 워치에 동기화
+                if oldData != newData {
+                    print("📚 책 데이터 변경, 워치에 동기화")
+                    syncAllBooksToWatch()
+                }
+            }
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 if newPhase == .background {
                     // EndPageInputView가 표시되지 않았고 진행 중 타이머가 아니라면 위젯 상태를 안전하게 정리
@@ -146,6 +155,8 @@ struct BookListView: View {
                 }
                 
                 if oldPhase == .background && newPhase == .active {
+                    print("📱 앱이 포그라운드로 복귀 - 워치 동기화")
+                    
                     // ✅ 앱이 백그라운드에서 포그라운드로 올 때
                     
                     // AppGroup 세션 처리
@@ -156,6 +167,9 @@ struct BookListView: View {
                     
                     // 워치 액션 체크
                     checkWatchAction()
+                    
+                    // ⌚️ 워치 동기화 (포그라운드 복귀 시)
+                    syncAllBooksToWatch()
                     
                     // ✅ 광고 표시 (약간의 딜레이)
                     Task {
@@ -224,6 +238,9 @@ struct BookListView: View {
                 modelContext.delete(book)
             }
             try? modelContext.save()
+            
+            // 📚 책 삭제 후 워치 동기화
+            syncAllBooksToWatch()
         }
     }
     
@@ -276,6 +293,9 @@ struct BookListView: View {
         selectedBook = nil
         currentSession = nil
         showEndPageInput = false
+        
+        // 📚 세션 저장 후 워치 동기화
+        syncAllBooksToWatch()
     }
     
     private func handleEndPageCancelled() {
@@ -326,6 +346,7 @@ struct BookRowView: View {
     
     @State private var showMemoSheet = false
     @State private var showRereadSheet = false
+    @State private var navigateToTimer = false
     
     private var hasMemos: Bool {
         guard let memos = book.memos else { return false }
@@ -343,38 +364,42 @@ struct BookRowView: View {
     }
     
     var body: some View {
-        NavigationLink(destination: destinationView) {
-            HStack(spacing: 16) {
-                // 책 표지 이미지
-                coverImageView
-                    .onTapGesture {
-                        if hasMemos {
-                            showMemoSheet = true
-                        }
+        HStack(spacing: 16) {
+            // 책 표지 이미지
+            coverImageView
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if hasMemos {
+                        showMemoSheet = true
+                    } else {
+                        // 메모가 없으면 일반 탭과 동일하게 동작
+                        handleBookTap()
                     }
+                }
+            
+            // 책 정보
+            VStack(alignment: .leading, spacing: 8) {
+                Text(book.title)
+                    .font(isIPad ? .title2 : .headline)
+                    .fontWeight(.bold)
+                    .lineLimit(2)
                 
-                // 책 정보
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(book.title)
-                        .font(isIPad ? .title2 : .headline)
-                        .fontWeight(.bold)
-                        .lineLimit(2)
-                    
-                    Text(book.author)
-                        .font(isIPad ? .body : .subheadline)
+                Text(book.author)
+                    .font(isIPad ? .body : .subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                
+                HStack(spacing: 12) {
+                    Label(pageText, systemImage: "doc.text.fill")
+                        .font(.caption)
                         .foregroundColor(.secondary)
-                        .lineLimit(1)
                     
-                    HStack(spacing: 12) {
-                        Label(pageText, systemImage: "doc.text.fill")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Label(totalReadingTime, systemImage: "clock.fill")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
+                    Label(totalReadingTime, systemImage: "clock.fill")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                HStack(spacing: 8) {
                     if isCompleted {
                         Text("finished")
                             .font(.caption)
@@ -385,11 +410,17 @@ struct BookRowView: View {
                             .background(Color.green)
                             .cornerRadius(8)
                     }
+                    
+        
                 }
-                
-                Spacer()
             }
-            .padding(.vertical, 8)
+            
+            Spacer()
+        }
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            handleBookTap()
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showMemoSheet) {
@@ -398,20 +429,28 @@ struct BookRowView: View {
         .sheet(isPresented: $showRereadSheet) {
             RereadStartPageSheet(book: book, isPresented: $showRereadSheet)
         }
+        .onChange(of: showRereadSheet) { _, newValue in
+            // 시트가 닫혔을 때 navigateToTimer 리셋
+            if !newValue {
+                navigateToTimer = false
+            }
+        }
+        .background(
+            NavigationLink(destination: ReadingTimerView(book: book), isActive: $navigateToTimer) {
+                EmptyView()
+            }
+            .hidden()
+        )
     }
     
-    // MARK: - Destination View
-    private var destinationView: some View {
-        Group {
-            if isCompleted {
-                // 완독한 책은 다시읽기 시트 표시 후 타이머로 이동
-                Color.clear
-                    .onAppear {
-                        showRereadSheet = true
-                    }
-            } else {
-                ReadingTimerView(book: book)
-            }
+    // MARK: - Handle Book Tap
+    private func handleBookTap() {
+        if isCompleted {
+            // 완독한 책은 시트만 표시
+            showRereadSheet = true
+        } else {
+            // 읽는 중인 책은 타이머로 이동
+            navigateToTimer = true
         }
     }
     
@@ -487,7 +526,6 @@ struct RereadStartPageSheet: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     @State private var startPage: Int = 1
-    @State private var navigateToTimer = false
     
     private var isIPad: Bool { horizontalSizeClass == .regular }
     
@@ -547,7 +585,7 @@ struct RereadStartPageSheet: View {
                         startReading()
                     } label: {
                         HStack {
-                            Image(systemName: "play.fill")
+                            Image(systemName: "checkmark.circle.fill")
                             Text("start_reading")
                         }
                         .font(.headline)
@@ -567,19 +605,40 @@ struct RereadStartPageSheet: View {
                     Button("cancel") { isPresented = false }
                 }
             }
-            .navigationDestination(isPresented: $navigateToTimer) {
-                ReadingTimerView(book: book)
-            }
         }
     }
     
     private func startReading() {
+        print("📖 다시 읽기 페이지 설정: \(startPage)페이지")
+        
+        // 📖 페이지 저장 및 상태 업데이트
         book.currentPage = startPage
+        book.isCompleted = false
+        book.lastUpdated = Date()
         try? modelContext.save()
         
+        print("✅ 페이지 저장 완료: \(startPage)페이지")
+        
+        // ⌚️ 워치로 즉시 동기화
+        syncToWatch()
+        
+        // 🔙 북 리스트로 돌아가기
         isPresented = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            navigateToTimer = true
-        }
+        
+        print("🔙 북 리스트로 복귀")
+    }
+    
+    private func syncToWatch() {
+        let bookData = TimerStateManager.BookData(
+            id: book.id.uuidString,
+            title: book.title,
+            author: book.author,
+            totalPages: book.totalPages,
+            currentPage: book.currentPage,
+            createdAt: book.createdAt,
+            lastUpdated: book.lastUpdated
+        )
+        WatchSyncManager.shared.sendBooksToWatch([bookData])
+        print("⌚️ 워치 동기화 완료: \(book.title) - \(book.currentPage)페이지")
     }
 }

@@ -1,3 +1,4 @@
+// FocusReader/Views/Book/EndPageInputView.swift
 import SwiftUI
 import SwiftData
 import EventKit
@@ -26,6 +27,11 @@ struct EndPageInputView: View {
     @State private var selectedImage: UIImage?
     @State private var tempImage: UIImage?
     @State private var showCamera = false
+    
+    // 📚 도서관 대출 정보 변경
+    @State private var updateLibraryLoan: Bool = false
+    @State private var newCheckoutDate: Date = Date()
+    @State private var newDueDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date())!
     
     private let eventStore = EKEventStore()
     
@@ -63,6 +69,51 @@ struct EndPageInputView: View {
                                 .foregroundColor(.secondary)
                         } header: {
                             Text("Book Information")
+                        }
+                        
+                        // MARK: - 📚 도서관 대출일 변경
+                        if book.hasDueDate {
+                            Section {
+                                Toggle("Update Library Loan Dates", isOn: $updateLibraryLoan)
+                                
+                                if updateLibraryLoan {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        // 현재 날짜 표시
+                                        if let currentCheckout = book.checkoutDate,
+                                           let currentDue = book.dueDate {
+                                            HStack {
+                                                Text("Current:")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                                Spacer()
+                                                Text("\(currentCheckout, style: .date) → \(currentDue, style: .date)")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .padding(.bottom, 4)
+                                        }
+                                        
+                                        DatePicker(
+                                            "New Checkout Date",
+                                            selection: $newCheckoutDate,
+                                            displayedComponents: .date
+                                        )
+                                        
+                                        DatePicker(
+                                            "New Due Date",
+                                            selection: $newDueDate,
+                                            in: newCheckoutDate...,
+                                            displayedComponents: .date
+                                        )
+                                    }
+                                }
+                            } header: {
+                                Text("Library Loan")
+                            } footer: {
+                                if updateLibraryLoan {
+                                    Text("The previous due date reminder will be replaced with the new dates.")
+                                }
+                            }
                         }
                         
                         // MARK: - Memo (Premium Locked)
@@ -200,6 +251,15 @@ struct EndPageInputView: View {
                             tempImage = image
                         }
                     }
+                    .onAppear {
+                        // 기존 대출일/반납일이 있으면 초기값으로 설정
+                        if let checkout = book.checkoutDate {
+                            newCheckoutDate = checkout
+                        }
+                        if let due = book.dueDate {
+                            newDueDate = due
+                        }
+                    }
                     AdaptiveBottomBannerView()
                 }
             }
@@ -214,59 +274,149 @@ struct EndPageInputView: View {
     
     // MARK: - Save
     private func saveSession() {
-           let trimmed = endPage.trimmingCharacters(in: .whitespaces)
-           guard let endPageInt = Int(trimmed) else {
-               errorMessage = "Please enter a valid page number."
-               showError = true
-               return
-           }
-           guard endPageInt >= startPage else {
-               errorMessage = "End page must be greater than or equal to start page."
-               showError = true
-               return
-           }
-           guard endPageInt <= book.totalPages else {
-               errorMessage = "End page cannot exceed total pages."
-               showError = true
-               return
-           }
-           
-           if !memo.isEmpty && !storeManager.isPremium {
-               errorMessage = "Premium is required to save memos."
-               showError = true
-               return
-           }
-           
-           if let session = session {
-               session.endSession(endPage: endPageInt)
-           }
-           
-           book.currentPage = endPageInt
-           book.checkCompletion()
-           
-           if !memo.isEmpty {
-               let newMemo = PageMemo(
-                   startPage: startPage,
-                   endPage: endPageInt,
-                   memo: memo,
-                   book: book
-               )
-               var memos = book.memos ?? []
-               memos.append(newMemo)
-               book.memos = memos
-               modelContext.insert(newMemo)
-           }
-           
-           if let image = tempImage,
-              let data = image.jpegData(compressionQuality: 0.8) {
-               book.coverImageData = data
-           }
-           
-           addToCalendar(startPage: startPage, endPage: endPageInt)
-           
-           dismiss()
-           onSave()
-       }
+        let trimmed = endPage.trimmingCharacters(in: .whitespaces)
+        guard let endPageInt = Int(trimmed) else {
+            errorMessage = "Please enter a valid page number."
+            showError = true
+            return
+        }
+        guard endPageInt >= startPage else {
+            errorMessage = "End page must be greater than or equal to start page."
+            showError = true
+            return
+        }
+        guard endPageInt <= book.totalPages else {
+            errorMessage = "End page cannot exceed total pages."
+            showError = true
+            return
+        }
+        
+        // 날짜 유효성 검사
+        if updateLibraryLoan && newCheckoutDate > newDueDate {
+            errorMessage = "Due date must be after checkout date."
+            showError = true
+            return
+        }
+        
+        if !memo.isEmpty && !storeManager.isPremium {
+            errorMessage = "Premium is required to save memos."
+            showError = true
+            return
+        }
+        
+        // 📚 도서관 대출일 업데이트 처리
+        if updateLibraryLoan {
+            updateLibraryLoanDates()
+        }
+        
+        if let session = session {
+            session.endSession(endPage: endPageInt)
+        }
+        
+        book.currentPage = endPageInt
+        book.checkCompletion()
+        
+        if !memo.isEmpty {
+            let newMemo = PageMemo(
+                startPage: startPage,
+                endPage: endPageInt,
+                memo: memo,
+                book: book
+            )
+            var memos = book.memos ?? []
+            memos.append(newMemo)
+            book.memos = memos
+            modelContext.insert(newMemo)
+        }
+        
+        if let image = tempImage,
+           let data = image.jpegData(compressionQuality: 0.8) {
+            book.coverImageData = data
+        }
+        
+        addToCalendar(startPage: startPage, endPage: endPageInt)
+        
+        
+        // 모델 저장
+        do {
+            try modelContext.save()
+            print("✅ Book updated and saved successfully")
+        } catch {
+            print("❌ Failed to save book: \(error)")
+        }
+        
+        dismiss()
+        onSave()
+    }
+    
+    // MARK: - 📚 도서관 대출일 업데이트
+    private func updateLibraryLoanDates() {
+        print("🔄 Updating library loan dates...")
+        
+        // 1️⃣ 기존 알림 취소
+        if let oldDueDate = book.dueDate {
+            let oldDateKey = dateKeyFormatter.string(from: oldDueDate)
+            
+            // iOS 알림 취소
+            WatchDueReminderScheduler.cancelGroup(dateKey: oldDateKey)
+            
+            // 워치 알림 취소
+            WatchSyncManager.shared.cancelDueReminderGroupOnWatch(dateKey: oldDateKey)
+            
+            print("🔕 Cancelled old reminders for: \(oldDateKey)")
+        }
+        
+        // 2️⃣ Book 모델 업데이트
+        book.updateInfo(
+            checkoutDate: newCheckoutDate,
+            dueDate: newDueDate
+        )
+        
+        print("📅 Updated dates - Checkout: \(newCheckoutDate), Due: \(newDueDate)")
+        
+        // 3️⃣ 새로운 알림 설정
+        let newDateKey = dateKeyFormatter.string(from: newDueDate)
+        
+        // 같은 날짜의 다른 책들 가져오기
+        let booksDueSameDay = fetchBooks(dueDate: newDueDate)
+        
+        // Payload 생성
+        let payload = WatchDueReminderScheduler.DueGroupPayload(
+            dateKey: newDateKey,
+            dueDate: newDueDate,
+            bookTitles: booksDueSameDay.map { $0.title }
+        )
+        
+        Task {
+            // iOS 앱 알림
+            await WatchDueReminderScheduler.scheduleGroup(payload)
+            
+            // ⌚️ 워치 알림
+            WatchSyncManager.shared.sendDueReminderGroupToWatch(payload)
+            
+            print("🔔 Scheduled new reminders for: \(newDateKey)")
+        }
+    }
+    
+    // MARK: - Fetch books with same due date
+    private func fetchBooks(dueDate: Date) -> [Book] {
+        do {
+            let descriptor = FetchDescriptor<Book>(
+                predicate: #Predicate { $0.dueDate == dueDate }
+            )
+            return try modelContext.fetch(descriptor)
+        } catch {
+            print("❌ Failed to fetch books for dueDate:", error)
+            return []
+        }
+    }
+    
+    // MARK: - DateFormatter
+    private var dateKeyFormatter: DateFormatter {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        return df
+    }
 
     // MARK: - Calendar
     private func addToCalendar(startPage: Int, endPage: Int) {
@@ -332,19 +482,4 @@ struct EndPageInputView: View {
         try? eventStore.save(event, span: .thisEvent)
     }
     
-    // MARK: - Watch Sync
-    private func syncBookToWatch(_ book: Book) {
-        let manager = TimerStateManager.shared
-        let bookData = TimerStateManager.BookData(
-            id: book.id.uuidString,
-            title: book.title,
-            author: book.author,
-            totalPages: book.totalPages,
-            currentPage: book.currentPage,
-            createdAt: book.createdAt,
-            lastUpdated: book.lastUpdated
-        )
-        manager.updateBook(bookData)
-    }
 }
-
