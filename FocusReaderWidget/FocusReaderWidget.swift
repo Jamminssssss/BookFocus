@@ -1,9 +1,5 @@
-//
-//  FocusReaderWidget.swift
-//  FocusReaderWidget
-//
-//  Created by JeaminPark on 12/12/25.
-//
+// FocusReaderWidget/FocusReaderWidget.swift
+// ✅ 수정: 타임라인 업데이트 주기를 짧게 하여 실시간성 개선
 
 import WidgetKit
 import SwiftUI
@@ -51,7 +47,7 @@ struct Provider: TimelineProvider {
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<TimerEntry>) -> ()) {
         let manager = TimerStateManager.shared
-        let state = manager.loadState() ?? TimerStateManager.TimerState(
+        var state = manager.loadState() ?? TimerStateManager.TimerState(
             isRunning: false,
             bookTitle: "",
             currentPage: 0,
@@ -66,13 +62,32 @@ struct Provider: TimelineProvider {
         )
         
         let currentDate = Date()
+        
+        // ⭐ 실행 중일 때 현재 경과 시간 계산
+        if state.isRunning, let startTime = state.sessionStartTime {
+            let currentElapsed = state.pausedTime + currentDate.timeIntervalSince(startTime)
+            state.elapsedTime = currentElapsed
+        } else {
+            // 일시정지 상태에서는 pausedTime 사용
+            state.elapsedTime = state.pausedTime
+        }
+        
         let entry = TimerEntry(date: currentDate, timerState: state)
         
-        // Update more frequently when running (every 15 seconds), otherwise every hour
-        let nextUpdate = state.isRunning
-            ? Calendar.current.date(byAdding: .second, value: 15, to: currentDate)!
-            : Calendar.current.date(byAdding: .hour, value: 1, to: currentDate)!
+        // ⭐ 업데이트 주기 최적화
+        let nextUpdate: Date
+        if state.isRunning {
+            // 실행 중: 1초마다 업데이트 (iOS는 최소 1초 간격 지원)
+            nextUpdate = Calendar.current.date(byAdding: .second, value: 1, to: currentDate)!
+        } else if state.pausedTime > 0 {
+            // 일시정지 상태: 10초마다 (배터리 절약)
+            nextUpdate = Calendar.current.date(byAdding: .second, value: 10, to: currentDate)!
+        } else {
+            // 타이머 없음: 1시간마다
+            nextUpdate = Calendar.current.date(byAdding: .hour, value: 1, to: currentDate)!
+        }
         
+        // ⭐ .atEnd 정책 사용: 다음 업데이트 시간이 되면 자동으로 새로고침
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
         completion(timeline)
     }
@@ -108,19 +123,16 @@ struct SmallWidgetView: View {
     var body: some View {
         VStack(spacing: 6) {
             if !entry.timerState.bookTitle.isEmpty {
-                // Book title
                 Text(entry.timerState.bookTitle)
                     .font(.caption2)
                     .fontWeight(.semibold)
                     .lineLimit(1)
                     .multilineTextAlignment(.center)
                 
-                // Page info
                 Text("Page \(entry.timerState.currentPage)/\(entry.timerState.totalPages)")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
-                // Timer display - Real-time update
                 TimerDisplayView(
                     isRunning: entry.timerState.isRunning,
                     sessionStartTime: entry.timerState.sessionStartTime,
@@ -143,7 +155,6 @@ struct SmallWidgetView: View {
             
             Spacer(minLength: 4)
             
-            // Play/Pause button
             Button(intent: ToggleTimerIntent()) {
                 VStack(spacing: 2) {
                     Image(systemName: entry.timerState.isRunning ? "pause.fill" : "play.fill")
@@ -171,23 +182,16 @@ struct MediumWidgetView: View {
     
     var body: some View {
         HStack(spacing: 16) {
-            // Left: Information
             VStack(alignment: .leading, spacing: 8) {
-                // Current time
-               
-                
                 if !entry.timerState.bookTitle.isEmpty {
-                    // Book title
                     Text(entry.timerState.bookTitle)
                         .font(.headline)
                         .lineLimit(2)
                     
-                    // Page info
                     Text("Page \(entry.timerState.currentPage) / \(entry.timerState.totalPages)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    // Timer display - Real-time update
                     TimerDisplayView(
                         isRunning: entry.timerState.isRunning,
                         sessionStartTime: entry.timerState.sessionStartTime,
@@ -210,7 +214,6 @@ struct MediumWidgetView: View {
             
             Spacer()
             
-            // Right: Play/Pause button
             Button(intent: ToggleTimerIntent()) {
                 VStack(spacing: 6) {
                     Image(systemName: entry.timerState.isRunning ? "pause.fill" : "play.fill")
@@ -239,11 +242,7 @@ struct LargeWidgetView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            // Current time
-           
-            
             if !entry.timerState.bookTitle.isEmpty {
-                // Book info
                 VStack(spacing: 8) {
                     Text(entry.timerState.bookTitle)
                         .font(.title2)
@@ -256,7 +255,6 @@ struct LargeWidgetView: View {
                         .foregroundColor(.secondary)
                 }
                 
-                // Timer display - Real-time update
                 TimerDisplayView(
                     isRunning: entry.timerState.isRunning,
                     sessionStartTime: entry.timerState.sessionStartTime,
@@ -282,7 +280,6 @@ struct LargeWidgetView: View {
             
             Spacer()
             
-            // Play/Pause button
             Button(intent: ToggleTimerIntent()) {
                 HStack(spacing: 12) {
                     Image(systemName: entry.timerState.isRunning ? "pause.fill" : "play.fill")
@@ -326,7 +323,6 @@ struct TimerDisplayView: View {
                         .foregroundColor(remaining < 60 ? .red : .primary)
                         .monospacedDigit()
                 } else {
-                    // Timer finished
                     Text("0:00")
                         .font(.system(size: fontSize, weight: .bold, design: .monospaced))
                         .foregroundColor(.red)
@@ -342,7 +338,7 @@ struct TimerDisplayView: View {
                     .monospacedDigit()
             }
         } else {
-            // Paused: Display fixed time
+            // ⭐ Paused: Display fixed time from pausedTime
             Text(formatTime(pausedTime))
                 .font(.system(size: fontSize, weight: .bold, design: .monospaced))
                 .foregroundColor(.secondary)

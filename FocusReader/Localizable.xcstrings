@@ -833,6 +833,7 @@
       }
     },
     "Choose how long you want to read" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2358,6 +2359,7 @@
       }
     },
     "minutes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2422,6 +2424,7 @@
       }
     },
     "Minutes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4222,6 +4225,7 @@
       }
     },
     "Save Reading" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4286,6 +4290,7 @@
       }
     },
     "Set Reading Timer" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4542,6 +4547,7 @@
       }
     },
     "Start Timer" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4865,6 +4871,7 @@
 
     },
     "Timer Complete!" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

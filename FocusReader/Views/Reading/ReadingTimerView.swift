@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 import SwiftData
 import AVFoundation
 import ActivityKit
@@ -25,7 +26,7 @@ struct ReadingTimerView: View {
     @State private var timerEndDate: Date?
 
     // UI
-    @State private var showTimerPicker: Bool = false
+    // Removed: @State private var showTimerPicker: Bool = false
     @State private var showTimerAlert: Bool = false
 
     // Audio / Live Activity
@@ -140,14 +141,7 @@ struct ReadingTimerView: View {
         }
         .navigationTitle("Reading Timer")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button { showTimerPicker = true } label: {
-                    Image(systemName: "timer")
-                        .font(isIPad ? .title2 : .body)
-                }
-            }
-        }
+        //.toolbar { ... }  <-- Entire toolbar removed according to instructions
         
         .fullScreenCover(isPresented: $showEndPageInput) {
             EndPageInputView(book: book, session: currentSession) {
@@ -165,13 +159,7 @@ struct ReadingTimerView: View {
                 cancelSession()
             }
         }
-        .fullScreenCover(isPresented: $showTimerPicker) {
-            TimerPickerView(minutes: $targetMinutes, isTimerMode: $isTimerMode)
-        }
-        .alert("Timer Complete!", isPresented: $showTimerAlert) {
-            Button("Save Reading") { showEndPageInput = true }
-            Button("Cancel", role: .cancel) { cancelSession() }
-        }
+        //.fullScreenCover(isPresented: $showTimerPicker) { TimerPickerView(minutes: $targetMinutes, isTimerMode: $isTimerMode) }  <-- removed as per instructions
         .onAppear {
             endAllLiveActivities()
             setupWidgetStateSync()
@@ -418,7 +406,6 @@ struct ReadingTimerView: View {
     }
     
     private func setupWidgetActionObserver() {
-        // UserDefaults를 주기적으로 체크하여 위젯/워치 액션 감지
         widgetObserverTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
             
             if let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader"),
@@ -426,9 +413,7 @@ struct ReadingTimerView: View {
                 
                 defaults.removeObject(forKey: "widget.action")
                 
-                // 스탑 액션이고 EndPageInputView로 이동해야 하는 경우 플래그 유지
                 if action == "stop" && defaults.bool(forKey: "widget.openEndPageInput") {
-                    // 플래그는 유지하고 액션만 제거 (앱이 열릴 때 처리)
                     defaults.synchronize()
                     return
                 }
@@ -437,21 +422,15 @@ struct ReadingTimerView: View {
                 
                 DispatchQueue.main.async {
                     if action == "toggle" {
-                        if self.isRunning {
-                            self.pauseTimer()
-                        } else {
-                            if self.currentSession == nil {
-                                self.startTimer()
-                            } else {
-                                self.resumeTimer()
-                            }
+                        // ⭐ 위젯에서 이미 시간 계산을 완료했으므로
+                        // 위젯 상태를 다시 로드하여 동기화
+                        if let widgetState = TimerStateManager.shared.loadState() {
+                            self.syncWithWidgetState(widgetState)
                         }
                     }
-                    // stop 액션은 앱이 열릴 때 BookListView에서 처리
                 }
             }
             
-            // 워치 액션 체크
             if let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader"),
                let action = defaults.string(forKey: "watch.action") {
                 
@@ -484,13 +463,72 @@ struct ReadingTimerView: View {
         widgetObserverTimer = nil
     }
     
+    
+    
+    // ⭐ 새로운 함수: 위젯 상태와 앱 상태 동기화
+    private func syncWithWidgetState(_ widgetState: TimerStateManager.TimerState) {
+        print("🔄 Syncing with widget state - isRunning: \(widgetState.isRunning), pausedTime: \(widgetState.pausedTime)")
+        
+        if widgetState.isRunning {
+            // 위젯에서 재개됨
+            if !isRunning {
+                // 앱에서 일시정지 상태였음 -> 재개
+                pausedElapsedTime = widgetState.pausedTime
+                sessionStartTime = Date()
+                isRunning = true
+                
+                // Timer Mode 처리
+                if isTimerMode {
+                    let totalTargetTime = TimeInterval(targetMinutes * 60)
+                    let remainingTime = max(0, totalTargetTime - pausedElapsedTime)
+                    timerEndDate = Date().addingTimeInterval(remainingTime)
+                }
+                
+                startUITimer()
+                updateLiveActivity()
+                updateWidgetState()
+                
+                print("▶️ App resumed from widget")
+            }
+        } else {
+            // 위젯에서 일시정지됨
+            if isRunning {
+                // 앱에서 실행 중이었음 -> 일시정지
+                pausedElapsedTime = widgetState.pausedTime
+                elapsedTime = pausedElapsedTime
+                isRunning = false
+                timer?.invalidate()
+                
+                updateLiveActivity()
+                updateWidgetState()
+                
+                print("⏸ App paused from widget - pausedTime: \(pausedElapsedTime)")
+            } else {
+                // 둘 다 일시정지 상태 -> 시간만 동기화
+                pausedElapsedTime = widgetState.pausedTime
+                elapsedTime = pausedElapsedTime
+                updateWidgetState()
+                
+                print("🔄 Time synced with widget - pausedTime: \(pausedElapsedTime)")
+            }
+        }
+    }
+    
     private func updateWidgetState() {
+        // ⭐ 현재 경과 시간을 정확하게 계산하여 저장
+        let currentElapsedTime: TimeInterval
+        if isRunning {
+            currentElapsedTime = pausedElapsedTime + Date().timeIntervalSince(sessionStartTime)
+        } else {
+            currentElapsedTime = pausedElapsedTime
+        }
+        
         let state = TimerStateManager.TimerState(
             isRunning: isRunning,
             bookTitle: book.title,
             currentPage: book.currentPage,
             totalPages: book.totalPages,
-            elapsedTime: elapsedTime,
+            elapsedTime: currentElapsedTime,
             sessionStartTime: isRunning ? sessionStartTime : nil,
             pausedTime: pausedElapsedTime,
             isTimerMode: isTimerMode,
@@ -500,6 +538,9 @@ struct ReadingTimerView: View {
         )
         
         stateManager.saveState(state)
+        
+        // ⭐ 위젯에도 즉시 반영
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     private func clearWidgetState() {
@@ -510,98 +551,5 @@ struct ReadingTimerView: View {
 
 
 
-// MARK: - Timer Picker View
 
-struct TimerPickerView: View {
-    @Binding var minutes: Int
-    @Binding var isTimerMode: Bool
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var selectedMinutes: Int
-    
-    private var isIPad: Bool {
-        horizontalSizeClass == .regular
-    }
-    
-    init(minutes: Binding<Int>, isTimerMode: Binding<Bool>) {
-        self._minutes = minutes
-        self._isTimerMode = isTimerMode
-        self._selectedMinutes = State(initialValue: minutes.wrappedValue)
-    }
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                Color(.systemGroupedBackground)
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    Spacer()
-                    
-                    VStack(spacing: isIPad ? 16 : 12) {
-                        Image(systemName: "timer")
-                            .font(.system(size: isIPad ? 80 : 60))
-                            .foregroundColor(.blue)
-                        
-                        Text("Set Reading Timer")
-                            .font(.system(size: isIPad ? 40 : 32, weight: .bold))
-                        
-                        Text("Choose how long you want to read")
-                            .font(isIPad ? .title3 : .subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.bottom, isIPad ? 70 : 50)
-                    
-                    Picker("Minutes", selection: $selectedMinutes) {
-                        ForEach([1, 5, 10, 15, 20, 25, 30, 45, 60, 90, 120], id: \.self) { min in
-                            Text("\(min)").tag(min)
-                                .font(.system(size: isIPad ? 32 : 24, weight: .semibold))
-                        }
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(height: isIPad ? 220 : 180)
-                    .padding(.horizontal, isIPad ? 60 : 40)
-                    
-                    Text("minutes")
-                        .font(isIPad ? .largeTitle : .title2)
-                        .foregroundColor(.secondary)
-                        .padding(.top, isIPad ? 12 : 8)
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        minutes = selectedMinutes
-                        isTimerMode = true
-                        dismiss()
-                    }) {
-                        HStack(spacing: isIPad ? 12 : 8) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(isIPad ? .title2 : .title3)
-                            Text("Start Timer")
-                                .font(isIPad ? .title3 : .headline)
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, isIPad ? 22 : 18)
-                        .background(Color.blue)
-                        .cornerRadius(isIPad ? 16 : 14)
-                    }
-                    .padding(.horizontal, isIPad ? 50 : 30)
-                    .padding(.bottom, isIPad ? 60 : 40)
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(isIPad ? .title2 : .title3)
-                            .foregroundColor(.gray)
-                    }
-                }
-            }
-        }
-    }
-}
+

@@ -435,12 +435,9 @@ struct BookRowView: View {
                 navigateToTimer = false
             }
         }
-        .background(
-            NavigationLink(destination: ReadingTimerView(book: book), isActive: $navigateToTimer) {
-                EmptyView()
-            }
-            .hidden()
-        )
+        .navigationDestination(isPresented: $navigateToTimer) {
+            ReadingTimerView(book: book)
+        }
     }
     
     // MARK: - Handle Book Tap
@@ -642,3 +639,4 @@ struct RereadStartPageSheet: View {
         print("⌚️ 워치 동기화 완료: \(book.title) - \(book.currentPage)페이지")
     }
 }
+

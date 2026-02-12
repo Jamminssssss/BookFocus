@@ -1,9 +1,5 @@
-//
-//  AppIntent.swift
-//  FocusReaderWidget
-//
-//  Created by JeaminPark on 12/12/25.
-//
+// FocusReaderWidget/AppIntent.swift
+// ✅ 수정: 타이머 일시정지/재개 시 시간을 올바르게 계산
 
 import WidgetKit
 import AppIntents
@@ -13,7 +9,6 @@ struct ConfigurationAppIntent: WidgetConfigurationIntent {
     static var title: LocalizedStringResource { "Configuration" }
     static var description: IntentDescription { "This is an example widget." }
 
-    // An example configurable parameter.
     @Parameter(title: "Favorite Emoji", default: "😃")
     var favoriteEmoji: String
 }
@@ -32,14 +27,51 @@ struct ToggleTimerIntent: AppIntent {
             throw IntentError.noActiveSession
         }
         
-        state.isRunning.toggle()
+        let now = Date()
+        
+        if state.isRunning {
+            // ⭐ 일시정지: 현재까지의 경과 시간을 계산하여 저장
+            if let startTime = state.sessionStartTime {
+                let additionalTime = now.timeIntervalSince(startTime)
+                state.pausedTime += additionalTime
+                print("⏸ Widget Pause - Added time: \(additionalTime)s, Total paused: \(state.pausedTime)s")
+            }
+            state.isRunning = false
+            state.sessionStartTime = nil  // ⭐ 중요: sessionStartTime 초기화
+            
+        } else {
+            // ⭐ 재개: 새로운 시작 시간 설정
+            state.isRunning = true
+            state.sessionStartTime = now
+            
+            // ⭐ Timer Mode일 경우 남은 시간 재계산
+            if state.isTimerMode {
+                let totalTargetTime = TimeInterval(state.targetMinutes * 60)
+                let remainingTime = max(0, totalTargetTime - state.pausedTime)
+                state.timerEndDate = now.addingTimeInterval(remainingTime)
+                print("▶️ Widget Resume (Timer Mode) - Remaining: \(remainingTime)s")
+            } else {
+                state.timerEndDate = nil
+                print("▶️ Widget Resume (Stopwatch Mode)")
+            }
+        }
+        
+        // ⭐ elapsedTime도 업데이트 (일시정지 상태에서 표시용)
+        state.elapsedTime = state.pausedTime
+        
+        // 상태 저장
         manager.saveState(state)
         
-        // 앱에 상태 변경 알림 전송 (UserDefaults 사용)
+        // ⭐ 위젯 즉시 새로고침
+        WidgetCenter.shared.reloadAllTimelines()
+        
+        // 앱에 상태 변경 알림 전송
         if let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader") {
             defaults.set("toggle", forKey: "widget.action")
             defaults.synchronize()
         }
+        
+        print("✅ Widget toggle completed - isRunning: \(state.isRunning), pausedTime: \(state.pausedTime)s")
         
         return .result()
     }
@@ -57,19 +89,29 @@ struct StopTimerIntent: AppIntent {
             throw IntentError.noActiveSession
         }
         
+        // ⭐ 실행 중이었다면 마지막 경과 시간 계산
+        if state.isRunning, let startTime = state.sessionStartTime {
+            let additionalTime = Date().timeIntervalSince(startTime)
+            state.pausedTime += additionalTime
+            state.elapsedTime = state.pausedTime
+        }
+        
         state.isRunning = false
+        state.sessionStartTime = nil
         manager.saveState(state)
         
-        // 앱에 정지 알림 전송 (UserDefaults 사용)
+        // ⭐ 위젯 즉시 새로고침
+        WidgetCenter.shared.reloadAllTimelines()
+        
+        // 앱에 정지 알림 전송
         if let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader") {
             defaults.set("stop", forKey: "widget.action")
-            // 딥링크 플래그 설정
             defaults.set(true, forKey: "widget.openEndPageInput")
             defaults.synchronize()
         }
         
-        // 앱 열기 요청 (iOS 17+ 에서는 openApp 사용 가능). URL은 UserDefaults 플래그로 앱에서 처리.
-        // Note: IntentResult has no `openApp()` API. We rely on the UserDefaults flag for the host app to open/navigate as needed.
+        print("🛑 Widget stop completed")
+        
         return .result()
     }
 }
@@ -84,4 +126,3 @@ enum IntentError: Error, CustomStringConvertible {
         }
     }
 }
-
