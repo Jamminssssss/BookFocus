@@ -1,0 +1,6 @@
+// Debug values may use Google's official sample identifiers. Supply restricted,
+// production identifiers through a private xcconfig for Release archives.
+GAD_APPLICATION_ID = your_admob_app_id_with_tilde
+GAD_TOP_BANNER_AD_UNIT_ID = ca-app-pub-9940677842340433/1771857953
+GAD_APP_OPEN_AD_UNIT_ID = ca-app-pub-9940677842340433/6832612940
+GAD_BOTTOM_BANNER_AD_UNIT_ID = ca-app-pub-9940677842340433/1341624871

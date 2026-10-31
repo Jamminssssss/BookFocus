@@ -1,7 +1,7 @@
-// ImagePicker.swift
 import SwiftUI
 import UIKit
 
+// MARK: - 카메라/앨범에서 사진을 가져오는 Picker
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var image: UIImage?
     @Environment(\.dismiss) private var dismiss
@@ -29,6 +29,41 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
+        }
+    }
+}
+
+// MARK: - 사진을 전체 화면으로 띄워주는 View
+struct FullScreenImageView: View {
+    let image: UIImage
+    let paperColor: Color
+    let inkColor: Color
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            paperColor.ignoresSafeArea()
+            
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .ignoresSafeArea()
+            
+            VStack {
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.title2)
+                            .foregroundStyle(inkColor)
+                            .padding(12)
+                            .background(paperColor.opacity(0.8))
+                            .clipShape(Circle())
+                    }
+                    Spacer()
+                }
+                .padding(24)
+                Spacer()
+            }
         }
     }
 }

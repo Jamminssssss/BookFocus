@@ -25,8 +25,8 @@ struct FocusReaderWidgetControl: ControlWidget {
                 Label(isRunning ? "On" : "Off", systemImage: "timer")
             }
         }
-        .displayName("Timer")
-        .description("A an example control that runs a timer.")
+        .displayName("Reading Timer")
+        .description("Start or pause your active BookFocus reading session.")
     }
 }
 
@@ -42,7 +42,7 @@ extension FocusReaderWidgetControl {
         }
 
         func currentValue(configuration: TimerConfiguration) async throws -> Value {
-            let isRunning = true // Check if the timer is running
+            let isRunning = TimerStateManager.shared.loadActiveState()?.isRunning ?? false
             return FocusReaderWidgetControl.Value(isRunning: isRunning, name: configuration.timerName)
         }
     }
@@ -57,6 +57,7 @@ struct TimerConfiguration: ControlConfigurationIntent {
 
 struct StartTimerIntent: SetValueIntent {
     static let title: LocalizedStringResource = "Start a timer"
+    static var openAppWhenRun: Bool { false }
 
     @Parameter(title: "Timer Name")
     var name: String
@@ -71,7 +72,19 @@ struct StartTimerIntent: SetValueIntent {
     }
 
     func perform() async throws -> some IntentResult {
-        // Start the timer…
+        guard var state = TimerStateManager.shared.loadActiveState(), state.hasActiveSession else {
+            return .result()
+        }
+
+        if value != state.isRunning {
+            state.toggleRunningState(source: "controlWidget")
+        }
+
+        TimerStateManager.shared.saveState(state)
+        if let defaults = UserDefaults(suiteName: AppGroupKey.suiteName) {
+            defaults.set("toggle", forKey: AppGroupKey.widgetAction)
+            defaults.set(state.bookID, forKey: AppGroupKey.widgetActionBookID)
+        }
         return .result()
     }
 }

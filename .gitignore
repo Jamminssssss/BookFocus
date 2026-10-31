@@ -5,6 +5,9 @@ xcuserdata/
 DerivedData/
 build/
 
+# Local API keys
+Config/Secrets.xcconfig
+
 # CocoaPods
 Pods/
 
@@ -19,3 +22,9 @@ fastlane/test_output
 
 # macOS
 .DS_Store
+
+# SwiftPM build output
+.build/
+
+# Editor swap files
+*.swp

@@ -11,6 +11,9 @@
 		86B54B092EEBDFFE00C5CE97 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86B54A1F2EE9624800C5CE97 /* SwiftUI.framework */; };
 		86B54B1A2EEBE00000C5CE97 /* FocusReaderWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 86B54B072EEBDFFE00C5CE97 /* FocusReaderWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		86C167062F13AA310055ECB2 /* BookFocus Watch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 86C166FC2F13AA2F0055ECB2 /* BookFocus Watch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		86D492692FF11BDF000C74E0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86B54A1D2EE9624700C5CE97 /* WidgetKit.framework */; };
+		86D4926A2FF11BDF000C74E0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86B54A1F2EE9624800C5CE97 /* SwiftUI.framework */; };
+		86D492792FF11BE2000C74E0 /* BookFocusWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 86D492682FF11BDF000C74E0 /* BookFocusWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		86FCCEB22F0B7324002CD56F /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 86FCCEB12F0B7324002CD56F /* GoogleMobileAds */; };
 /* End PBXBuildFile section */
 
@@ -28,6 +31,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 86C166FB2F13AA2F0055ECB2;
 			remoteInfo = "BookFocus Watch Watch App";
+		};
+		86D492772FF11BE2000C74E0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8624607A2EE9300800C67BD2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 86D492672FF11BDF000C74E0;
+			remoteInfo = BookFocusWidgetExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -54,6 +64,17 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		86D4927E2FF11BE2000C74E0 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				86D492792FF11BE2000C74E0 /* BookFocusWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -64,6 +85,10 @@
 		86B54A1F2EE9624800C5CE97 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		86B54B072EEBDFFE00C5CE97 /* FocusReaderWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusReaderWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		86C166FC2F13AA2F0055ECB2 /* BookFocus Watch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "BookFocus Watch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		86D492682FF11BDF000C74E0 /* BookFocusWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BookFocusWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		86D4927F2FF11C28000C74E0 /* BookFocusWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BookFocusWidgetExtension.entitlements; sourceTree = "<group>"; };
+		A20000012FF2000000000001 /* BookFocus.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = BookFocus.xcconfig; sourceTree = "<group>"; };
+		A20000012FF2000000000002 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -89,6 +114,20 @@
 			);
 			target = 86B54B062EEBDFFE00C5CE97 /* FocusReaderWidgetExtension */;
 		};
+		86D4927D2FF11BE2000C74E0 /* Exceptions for "BookFocusWidget" folder in "BookFocusWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 86D492672FF11BDF000C74E0 /* BookFocusWidgetExtension */;
+		};
+		86D492832FF11D58000C74E0 /* Exceptions for "BookFocusWidget" folder in "BookFocus Watch Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				BookFocusTimerEntry.swift,
+			);
+			target = 86C166FB2F13AA2F0055ECB2 /* BookFocus Watch Watch App */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -112,6 +151,20 @@
 		86C166FD2F13AA2F0055ECB2 /* BookFocus Watch Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "BookFocus Watch Watch App";
+			sourceTree = "<group>";
+		};
+		86D4926B2FF11BDF000C74E0 /* BookFocusWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				86D492832FF11D58000C74E0 /* Exceptions for "BookFocusWidget" folder in "BookFocus Watch Watch App" target */,
+				86D4927D2FF11BE2000C74E0 /* Exceptions for "BookFocusWidget" folder in "BookFocusWidgetExtension" target */,
+			);
+			path = BookFocusWidget;
+			sourceTree = "<group>";
+		};
+		A10000012FF0000000000001 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -141,16 +194,29 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		86D492652FF11BDF000C74E0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				86D4926A2FF11BDF000C74E0 /* SwiftUI.framework in Frameworks */,
+				86D492692FF11BDF000C74E0 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		862460792EE9300800C67BD2 = {
 			isa = PBXGroup;
 			children = (
+				A20000012FF2000000000003 /* Config */,
+				A10000012FF0000000000001 /* Shared */,
+				86D4927F2FF11C28000C74E0 /* BookFocusWidgetExtension.entitlements */,
 				86A4E0682EF3D15000AAE91A /* FocusReaderWidgetExtension.entitlements */,
 				862460842EE9300800C67BD2 /* FocusReader */,
 				86B54B0A2EEBDFFE00C5CE97 /* FocusReaderWidget */,
 				86C166FD2F13AA2F0055ECB2 /* BookFocus Watch Watch App */,
+				86D4926B2FF11BDF000C74E0 /* BookFocusWidget */,
 				862461742EE940BB00C67BD2 /* Frameworks */,
 				862460832EE9300800C67BD2 /* Products */,
 			);
@@ -162,6 +228,7 @@
 				862460822EE9300800C67BD2 /* FocusReader.app */,
 				86B54B072EEBDFFE00C5CE97 /* FocusReaderWidgetExtension.appex */,
 				86C166FC2F13AA2F0055ECB2 /* BookFocus Watch Watch App.app */,
+				86D492682FF11BDF000C74E0 /* BookFocusWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -174,6 +241,15 @@
 				86B54A1F2EE9624800C5CE97 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A20000012FF2000000000003 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				A20000012FF2000000000001 /* BookFocus.xcconfig */,
+				A20000012FF2000000000002 /* Secrets.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -197,6 +273,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				862460842EE9300800C67BD2 /* FocusReader */,
+				A10000012FF0000000000001 /* Shared */,
 			);
 			name = FocusReader;
 			packageProductDependencies = (
@@ -220,6 +297,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				86B54B0A2EEBDFFE00C5CE97 /* FocusReaderWidget */,
+				A10000012FF0000000000001 /* Shared */,
 			);
 			name = FocusReaderWidgetExtension;
 			packageProductDependencies = (
@@ -235,13 +313,16 @@
 				86C166F82F13AA2F0055ECB2 /* Sources */,
 				86C166F92F13AA2F0055ECB2 /* Frameworks */,
 				86C166FA2F13AA2F0055ECB2 /* Resources */,
+				86D4927E2FF11BE2000C74E0 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				86D492782FF11BE2000C74E0 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				86C166FD2F13AA2F0055ECB2 /* BookFocus Watch Watch App */,
+				A10000012FF0000000000001 /* Shared */,
 			);
 			name = "BookFocus Watch Watch App";
 			packageProductDependencies = (
@@ -249,6 +330,29 @@
 			productName = "BookFocus Watch Watch App";
 			productReference = 86C166FC2F13AA2F0055ECB2 /* BookFocus Watch Watch App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		86D492672FF11BDF000C74E0 /* BookFocusWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 86D4927A2FF11BE2000C74E0 /* Build configuration list for PBXNativeTarget "BookFocusWidgetExtension" */;
+			buildPhases = (
+				86D492642FF11BDF000C74E0 /* Sources */,
+				86D492652FF11BDF000C74E0 /* Frameworks */,
+				86D492662FF11BDF000C74E0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				86D4926B2FF11BDF000C74E0 /* BookFocusWidget */,
+				A10000012FF0000000000001 /* Shared */,
+			);
+			name = BookFocusWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = BookFocusWidgetExtension;
+			productReference = 86D492682FF11BDF000C74E0 /* BookFocusWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -258,7 +362,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2600;
-				LastUpgradeCheck = 2600;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					862460812EE9300800C67BD2 = {
 						CreatedOnToolsVersion = 26.0;
@@ -268,6 +372,10 @@
 					};
 					86C166FB2F13AA2F0055ECB2 = {
 						CreatedOnToolsVersion = 26.0;
+					};
+					86D492672FF11BDF000C74E0 = {
+						CreatedOnToolsVersion = 26.0;
+						LastSwiftMigration = 2600;
 					};
 				};
 			};
@@ -292,6 +400,7 @@
 				862460812EE9300800C67BD2 /* FocusReader */,
 				86B54B062EEBDFFE00C5CE97 /* FocusReaderWidgetExtension */,
 				86C166FB2F13AA2F0055ECB2 /* BookFocus Watch Watch App */,
+				86D492672FF11BDF000C74E0 /* BookFocusWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -312,6 +421,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		86C166FA2F13AA2F0055ECB2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		86D492662FF11BDF000C74E0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -342,6 +458,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		86D492642FF11BDF000C74E0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -355,17 +478,24 @@
 			target = 86C166FB2F13AA2F0055ECB2 /* BookFocus Watch Watch App */;
 			targetProxy = 86C167042F13AA310055ECB2 /* PBXContainerItemProxy */;
 		};
+		86D492782FF11BE2000C74E0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 86D492672FF11BDF000C74E0 /* BookFocusWidgetExtension */;
+			targetProxy = 86D492772FF11BE2000C74E0 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		862460912EE9300A00C67BD2 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A20000012FF2000000000001 /* BookFocus.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = FocusReader/FocusReader.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = DUBPMF36TD;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -375,15 +505,21 @@
 				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
+				GAD_APPLICATION_ID = "ca-app-pub-3940256099942544~1458002511";
+				GAD_APP_OPEN_AD_UNIT_ID = "ca-app-pub-3940256099942544/5575463023";
+				GAD_BOTTOM_BANNER_AD_UNIT_ID = "ca-app-pub-3940256099942544/2435281174";
+				GAD_TOP_BANNER_AD_UNIT_ID = "ca-app-pub-3940256099942544/2435281174";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FocusReader/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BookFocus;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSCalendarsUsageDescription = "This app needs access to your calendar to save reading sessions.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app requires access to the camera to capture book covers.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs access to your photo library to save book covers.";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "We need full calendar access to update or overwrite existing due date reminders when your loan details change.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "We need access to your calendar to automatically add book checkout and due dates.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "FocusReader needs access to your camera to take photos of book covers.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "FocusReader needs access to your photo library to let you choose and add book cover images.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -398,7 +534,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Jaemin.FocusReader;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -419,12 +555,14 @@
 		};
 		862460922EE9300A00C67BD2 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A20000012FF2000000000001 /* BookFocus.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = FocusReader/FocusReader.entitlements;
+				CODE_SIGN_ENTITLEMENTS = FocusReader/FocusReaderRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = DUBPMF36TD;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -434,15 +572,21 @@
 				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
+				GAD_APPLICATION_ID = "ca-app-pub-3940256099942544~1458002511";
+				GAD_APP_OPEN_AD_UNIT_ID = "ca-app-pub-9940677842340433/6832612940";
+				GAD_BOTTOM_BANNER_AD_UNIT_ID = "ca-app-pub-9940677842340433/1341624871";
+				GAD_TOP_BANNER_AD_UNIT_ID = "ca-app-pub-9940677842340433/1771857953";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FocusReader/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = BookFocus;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSCalendarsUsageDescription = "This app needs access to your calendar to save reading sessions.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app requires access to the camera to capture book covers.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs access to your photo library to save book covers.";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "We need full calendar access to update or overwrite existing due date reminders when your loan details change.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "We need access to your calendar to automatically add book checkout and due dates.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "FocusReader needs access to your camera to take photos of book covers.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "FocusReader needs access to your photo library to let you choose and add book cover images.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -457,7 +601,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Jaemin.FocusReader;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -481,6 +625,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -510,6 +655,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = DUBPMF36TD;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -533,6 +679,7 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -544,6 +691,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -573,6 +721,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = DUBPMF36TD;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -589,6 +738,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
@@ -601,7 +751,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FocusReaderWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = DUBPMF36TD;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FocusReaderWidget/Info.plist;
@@ -613,7 +763,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Jaemin.FocusReader.FocusReaderWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -638,7 +788,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = FocusReaderWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = DUBPMF36TD;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FocusReaderWidget/Info.plist;
@@ -650,7 +800,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Jaemin.FocusReader.FocusReaderWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -676,7 +826,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "BookFocus Watch Watch App/BookFocus Watch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = DUBPMF36TD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -688,7 +838,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Jaemin.FocusReader.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -709,9 +859,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "BookFocus Watch Watch App/BookFocus Watch Watch App.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "BookFocus Watch Watch App/BookFocus Watch Watch AppRelease.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = DUBPMF36TD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -723,7 +873,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Jaemin.FocusReader.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -732,6 +882,80 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		86D4927B2FF11BE2000C74E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = BookFocusWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = DUBPMF36TD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BookFocusWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BookFocusWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.7;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Jaemin.FocusReader.watchkitapp.BookFocusWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		86D4927C2FF11BE2000C74E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = BookFocusWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = DUBPMF36TD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BookFocusWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BookFocusWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.2.7;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Jaemin.FocusReader.watchkitapp.BookFocusWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
@@ -775,6 +999,15 @@
 			buildConfigurations = (
 				86C167082F13AA310055ECB2 /* Debug */,
 				86C167092F13AA310055ECB2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		86D4927A2FF11BE2000C74E0 /* Build configuration list for PBXNativeTarget "BookFocusWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				86D4927B2FF11BE2000C74E0 /* Debug */,
+				86D4927C2FF11BE2000C74E0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

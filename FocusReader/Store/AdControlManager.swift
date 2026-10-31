@@ -7,6 +7,7 @@ final class AdControlManager: ObservableObject {
 
     /// 광고 제거 구매 여부
     @Published private(set) var isAdRemoved: Bool = false
+    @Published private(set) var isPurchaseStatusReady: Bool = false
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -16,7 +17,7 @@ final class AdControlManager: ObservableObject {
 
     // MARK: - Bind StoreKit Purchase Status
     private func bindPurchaseStatus() {
-        // 앱 시작 시 즉시 반영
+        // StoreKit 조회가 끝나기 전에는 기존 구독자에게 광고를 노출하지 않는다.
         isAdRemoved = StoreKitManager.shared.isPremium
 
         // 구매 상태 변경 감지
@@ -25,6 +26,7 @@ final class AdControlManager: ObservableObject {
             .sink { _ in
                 let premium = StoreKitManager.shared.isPremium
                 self.isAdRemoved = premium
+                self.isPurchaseStatusReady = true
                 print("🔄 광고 제거 상태 업데이트:", premium)
             }
             .store(in: &cancellables)
@@ -35,14 +37,14 @@ final class AdControlManager: ObservableObject {
 extension AdControlManager {
 
     var shouldShowBannerAds: Bool {
-        !isAdRemoved
+        isPurchaseStatusReady && !isAdRemoved
     }
 
     var shouldShowInterstitialAds: Bool {
-        !isAdRemoved
+        isPurchaseStatusReady && !isAdRemoved
     }
 
     var shouldShowAppOpenAds: Bool {
-        !isAdRemoved
+        isPurchaseStatusReady && !isAdRemoved
     }
 }

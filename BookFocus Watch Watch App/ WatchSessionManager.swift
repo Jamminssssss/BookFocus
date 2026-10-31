@@ -7,21 +7,19 @@ final class WatchSessionManager: NSObject, WCSessionDelegate, ObservableObject {
 
     static let shared = WatchSessionManager()
     
-    // ✅ 세션 활성화 상태 추적
     @Published private(set) var isSessionActivated = false
     @Published private(set) var isReachable = false
     
-    // ✅ 대기 중인 메시지 큐
-    private var pendingMessages: [[String: Any]] = []
-    private let pendingMessagesLock = NSLock()
+    // ✅ [수정] WCSession '활성화'가 되기 아주 짧은 찰나에 요청된 메시지만 담아두는 임시 보관소
+    private var preActivationQueue: [[String: Any]] = []
+    private let queueLock = NSLock()
+    private let pendingSessionsKey = "watch.pendingSessionPayloads"
     
-    // ✅ 재시도 타이머
-    private var retryTimer: Timer?
+    // ❌ [치명적 오류 수정] 배터리를 광탈시키고 앱을 강제 종료시키던 5초 무한 재시도 타이머(retryTimer) 삭제 완료
 
     private override init() {
         super.init()
         activate()
-        startPeriodicRetry()
     }
 
     private func activate() {
@@ -35,240 +33,190 @@ final class WatchSessionManager: NSObject, WCSessionDelegate, ObservableObject {
         print("⌚️ WCSession activation initiated")
     }
     
-    // ✅ 주기적으로 대기 중인 메시지 재시도
-    private func startPeriodicRetry() {
-        retryTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            self?.processPendingMessages()
-        }
-    }
+    // MARK: - Send Message (안전한 전송 및 폴백 로직)
     
-    deinit {
-        retryTimer?.invalidate()
-    }
-    
-    // MARK: - Send Message with Retry Logic
-    
-    /// 메시지 전송 (재시도 로직 포함)
-    func sendMessage(_ message: [String: Any], maxRetries: Int = 3) {
+    /// 메시지 전송 (연결 시 즉시 전송, 실패 시 OS 백그라운드 큐로 안전하게 위임)
+    func sendMessage(_ message: [String: Any]) {
         let session = WCSession.default
         
-        print("📨 sendMessage called - Activated: \(isSessionActivated), Reachable: \(session.isReachable)")
-        
-        // 세션이 활성화되지 않았으면 대기 큐에 추가
-        guard isSessionActivated else {
-            print("⚠️ Session not activated yet, queuing message")
-            queueMessage(message)
+        // 1. 아직 세션이 활성화되지 않았다면 찰나의 순간이므로 임시 큐에 보관
+        guard session.activationState == .activated else {
+            queueLock.lock()
+            preActivationQueue.append(message)
+            queueLock.unlock()
+            print("⏳ Session starting up, queued message temporarily")
             return
         }
         
-        // ✅ watchOS에서는 isPaired, isWatchAppInstalled 체크 불필요
+        // 2. 활성화 상태라면 전송 시도
+        sendOrTransfer(message)
+    }
+
+    /// Completed reading sessions are also kept on disk until WatchConnectivity
+    /// confirms that its background transfer has finished.
+    func sendSession(_ message: [String: Any]) {
+        var queuedMessage = message
+        queuedMessage["deliveryID"] = UUID().uuidString
+
+        var pending = loadPendingSessions()
+        pending.append(queuedMessage)
+        savePendingSessions(pending)
+
+        guard WCSession.default.activationState == .activated else { return }
+        sendOrTransfer(queuedMessage)
+    }
+    
+    // ✅ [수정] WCSession 강제 백그라운드 전송 보장 로직
+    private func sendOrTransfer(_ message: [String: Any]) {
+        let session = WCSession.default
         
-        // 1순위: sendMessage (즉시 전송)
+        // 1. 앱이 꺼지거나 즉시 일시정지되더라도 OS가 나중에 무조건 전송하도록 보장 (핵심)
+        session.transferUserInfo(message)
+        print("📦 Queued to OS background transfer (transferUserInfo)")
+        
+        // 2. 아이폰 화면이 켜져 있는 경우, 즉시 화면에 반영되도록 sendMessage 병행 시도
         if session.isReachable {
-            session.sendMessage(message, replyHandler: { reply in
-                print("✅ Message sent successfully with reply:", reply)
-            }) { error in
-                print("⚠️ sendMessage failed:", error.localizedDescription)
-                // 실패 시 transferUserInfo로 폴백
-                self.fallbackToTransferUserInfo(message)
-            }
-            print("📡 Sent message via sendMessage (reachable)")
-        }
-        // 2순위: transferUserInfo (백그라운드 전송)
-        else {
-            fallbackToTransferUserInfo(message)
+            session.sendMessage(message, replyHandler: nil, errorHandler: nil)
+            print("📡 Attempting immediate sendMessage")
         }
     }
     
-    /// 메시지를 큐에 추가
-    private func queueMessage(_ message: [String: Any]) {
-        pendingMessagesLock.lock()
-        pendingMessages.append(message)
-        let count = pendingMessages.count
-        pendingMessagesLock.unlock()
-        print("📥 Message queued. Total pending: \(count)")
-    }
-    
-    /// transferUserInfo로 폴백
-    private func fallbackToTransferUserInfo(_ message: [String: Any]) {
-        let session = WCSession.default
-        let transfer = session.transferUserInfo(message)
-        print("📦 Sent message via transferUserInfo (not reachable). Outstanding: \(session.outstandingUserInfoTransfers.count)")
-        print("   Transfer file URL: \(transfer.userInfo)")
-    }
-    
-    // MARK: - Process Pending Messages
-    
-    /// 대기 중인 메시지 모두 전송
-    @objc private func processPendingMessages() {
-        pendingMessagesLock.lock()
-        let messages = pendingMessages
-        pendingMessagesLock.unlock()
-        
-        guard !messages.isEmpty else { return }
-        
-        let session = WCSession.default
-        
-        // ✅ watchOS에서는 세션 활성화 상태만 체크
-        guard isSessionActivated else {
-            print("⏳ Cannot process pending messages yet. Waiting for session activation...")
-            return
-        }
-        
-        print("📬 Processing \(messages.count) pending messages")
-        
-        // 메시지를 하나씩 전송 시도
-        var successCount = 0
-        pendingMessagesLock.lock()
-        var remainingMessages: [[String: Any]] = []
+    // 세션 활성화 직후에만 한 번 불리는 임시 큐 비우기
+    private func flushPreActivationQueue() {
+        queueLock.lock()
+        let messages = preActivationQueue
+        preActivationQueue.removeAll()
+        queueLock.unlock()
         
         for message in messages {
-            if session.isReachable {
-                session.sendMessage(message, replyHandler: { _ in
-                    print("✅ Pending message sent successfully")
-                }) { error in
-                    print("⚠️ Pending message failed, will retry: \(error.localizedDescription)")
-                    remainingMessages.append(message)
-                }
-                successCount += 1
-            } else {
-                // reachable하지 않으면 transferUserInfo 사용
-                session.transferUserInfo(message)
-                print("📦 Pending message sent via transferUserInfo")
-                successCount += 1
-            }
+            sendOrTransfer(message)
         }
-        
-        pendingMessages = remainingMessages
-        pendingMessagesLock.unlock()
-        
-        if successCount > 0 {
-            print("✅ Processed \(successCount) pending messages. Remaining: \(remainingMessages.count)")
+    }
+
+    private func flushPendingSessionOutbox() {
+        for message in loadPendingSessions() {
+            sendOrTransfer(message)
         }
+    }
+
+    private func loadPendingSessions() -> [[String: Any]] {
+        UserDefaults(suiteName: AppGroupKey.suiteName)?
+            .array(forKey: pendingSessionsKey) as? [[String: Any]] ?? []
+    }
+
+    private func savePendingSessions(_ messages: [[String: Any]]) {
+        let defaults = UserDefaults(suiteName: AppGroupKey.suiteName)
+        if messages.isEmpty {
+            defaults?.removeObject(forKey: pendingSessionsKey)
+        } else {
+            defaults?.set(messages, forKey: pendingSessionsKey)
+        }
+    }
+
+    private func removePendingSession(deliveryID: String) {
+        var pending = loadPendingSessions()
+        pending.removeAll { $0["deliveryID"] as? String == deliveryID }
+        savePendingSessions(pending)
     }
 
     // MARK: - Message Handling
 
     private func handleMessage(_ payload: [String: Any]) {
-        // 1️⃣ 타입 확인
         if let type = payload["type"] as? String {
             switch type {
             case "dueReminderGroup":
                 handleDueReminderGroup(payload)
             case "cancelDueReminderGroup":
                 handleCancelDueReminderGroup(payload)
+            case "booksSync":
+                handleBooks(payload)
+            case "timerSync", "timerStateChanged":
+                handleTimerSync(payload)
             default:
                 print("⚠️ Unknown message type: \(type)")
             }
             return
         }
         
-        // 2️⃣ 책 목록 처리 (기존 로직)
         handleBooks(payload)
     }
 
-    // ✨ 수정된 부분: 병합 로직 추가
     private func handleBooks(_ payload: [String: Any]) {
         guard let data = payload["books"] as? Data,
-              let receivedBooks = try? JSONDecoder().decode(
-                [TimerStateManager.BookData].self,
-                from: data
-              )
+              let receivedBooks = try? JSONDecoder().decode([TimerStateManager.BookData].self, from: data)
         else {
             print("❌ Watch failed to decode books")
             return
         }
 
         print("📥 Received \(receivedBooks.count) books from iPhone")
-        
-        // ✨ Watch의 로컬 데이터 로드
+        let isFullSnapshot = payload["isFullSnapshot"] as? Bool ?? false
         let localBooks = TimerStateManager.shared.loadBooks()
-        
-        // ✨ 병합: 각 책의 최신 데이터 사용
-        var mergedBooks: [TimerStateManager.BookData] = []
-        
-        for receivedBook in receivedBooks {
-            if let localBook = localBooks.first(where: { $0.id == receivedBook.id }) {
-                // 같은 책이 로컬에 있으면 lastUpdated 비교
-                if localBook.lastUpdated > receivedBook.lastUpdated {
-                    // Watch 데이터가 더 최신
-                    mergedBooks.append(localBook)
-                    print("  ✅ \(localBook.title): Using Watch data (page \(localBook.currentPage)) - newer than iPhone")
-                } else {
-                    // iPhone 데이터가 더 최신
-                    mergedBooks.append(receivedBook)
-                    print("  📱 \(receivedBook.title): Using iPhone data (page \(receivedBook.currentPage))")
-                }
-            } else {
-                // 로컬에 없는 새 책
-                mergedBooks.append(receivedBook)
-                print("  🆕 \(receivedBook.title): New book from iPhone")
-            }
-        }
-        
-        // ✨ 병합된 데이터 저장
+        let mergedBooks = BookSyncLogic.merge(
+            local: localBooks,
+            incoming: receivedBooks,
+            isFullSnapshot: isFullSnapshot
+        )
         TimerStateManager.shared.saveBooks(mergedBooks)
-        print("📚 Merged books saved: \(mergedBooks.count) books")
+        print("📚 \(isFullSnapshot ? "Full" : "Incremental") sync saved: \(mergedBooks.count) books")
     }
     
-    // MARK: - 반납일 그룹 알림 처리
     private func handleDueReminderGroup(_ payload: [String: Any]) {
-        guard let payloadData = payload["payload"] as? Data else {
-            print("❌ Missing payload data")
-            return
-        }
+        guard let payloadData = payload["payload"] as? Data else { return }
         
         do {
-            let groupPayload = try JSONDecoder().decode(
-                WatchDueReminderScheduler.DueGroupPayload.self,
-                from: payloadData
-            )
-            
-            Task {
-                await WatchDueReminderScheduler.scheduleGroup(groupPayload)
-            }
-            
-            print("⌚️🔔 Scheduled group reminder for \(groupPayload.dateKey): \(groupPayload.bookTitles.count) books")
+            let groupPayload = try JSONDecoder().decode(WatchDueReminderScheduler.DueGroupPayload.self, from: payloadData)
+            Task { await WatchDueReminderScheduler.scheduleGroup(groupPayload) }
+            print("⌚️🔔 Scheduled group reminder")
         } catch {
-            print("❌ Failed to decode due reminder group: \(error)")
+            print("❌ Failed to decode due reminder group")
         }
     }
     
     private func handleCancelDueReminderGroup(_ payload: [String: Any]) {
-        guard let dateKey = payload["dateKey"] as? String else {
-            print("❌ Missing dateKey")
+        guard let dateKey = payload["dateKey"] as? String else { return }
+        WatchDueReminderScheduler.cancelGroup(dateKey: dateKey)
+    }
+
+    private func handleTimerSync(_ payload: [String: Any]) {
+        guard let bookID = payload["bookID"] as? String else { return }
+
+        if let data = payload["state"] as? Data,
+           let state = try? JSONDecoder().decode(SharedTimerState.self, from: data) {
+            Task { @MainActor in TimerViewModel.shared.applyRemoteTimerState(state) }
             return
         }
-        
-        WatchDueReminderScheduler.cancelGroup(dateKey: dateKey)
-        print("⌚️🔕 Cancelled group reminder for: \(dateKey)")
+
+        let action = payload["action"] as? String
+        let isRunning = payload["isRunning"] as? Bool ?? (action == "start")
+        let elapsedTime = payload["elapsedTime"] as? TimeInterval ?? 0
+
+        Task { @MainActor in
+            TimerViewModel.shared.applyRemoteTimerState(
+                bookID: bookID,
+                action: action,
+                isRunning: isRunning,
+                elapsedTime: elapsedTime
+            )
+        }
     }
 
     // MARK: - WCSessionDelegate
     
-    func session(
-        _ session: WCSession,
-        activationDidCompleteWith activationState: WCSessionActivationState,
-        error: Error?
-    ) {
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         DispatchQueue.main.async {
             self.isSessionActivated = (activationState == .activated)
             self.isReachable = session.isReachable
             
             if let error = error {
                 print("❌ Session activation error:", error.localizedDescription)
-            } else {
-                print("✅ Session activated: \(activationState.rawValue)")
-                print("   Activation State: \(activationState.rawValue)")
-                print("   Reachable: \(session.isReachable)")
-                
-                // ✅ 활성화 완료 후 대기 중인 메시지 전송
-                if activationState == .activated {
-                    // 약간의 딜레이 후 처리 (완전한 활성화 대기)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self.processPendingMessages()
-                    }
-                }
+            } else if activationState == .activated {
+                print("✅ Session activated successfully")
+                // ✅ 세션이 켜지자마자 대기 중이던 메시지 일괄 처리
+                self.flushPreActivationQueue()
+                self.flushPendingSessionOutbox()
+                self.sendOrTransfer(["type": "requestTimerState"])
+                self.sendOrTransfer(["type": "requestBooks"])
             }
         }
     }
@@ -277,42 +225,31 @@ final class WatchSessionManager: NSObject, WCSessionDelegate, ObservableObject {
         DispatchQueue.main.async {
             self.isReachable = session.isReachable
             print("⌚️ Reachability changed: \(session.isReachable)")
-            
-            // ✅ 연결 가능해지면 대기 중인 메시지 재전송
-            if session.isReachable {
-                self.processPendingMessages()
-            }
         }
     }
 
-    // 📥 iOS → Watch (백그라운드)
-    func session(
-        _ session: WCSession,
-        didReceiveUserInfo userInfo: [String : Any]
-    ) {
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String : Any]) {
         print("📥 Received userInfo from iOS")
-        handleMessage(userInfo)
+        DispatchQueue.main.async { self.handleMessage(userInfo) }
     }
 
-    // 📥 iOS → Watch (즉시)
-    func session(
-        _ session: WCSession,
-        didReceiveMessage message: [String : Any]
-    ) {
-        print("📥 Received message from iOS")
-        handleMessage(message)
+    func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
+        print("📥 Received immediate message from iOS")
+        DispatchQueue.main.async { self.handleMessage(message) }
+    }
+
+    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String : Any]) {
+        DispatchQueue.main.async { self.handleMessage(applicationContext) }
     }
     
-    // ✅ transferUserInfo 완료 콜백
-    func session(
-        _ session: WCSession,
-        didFinish userInfoTransfer: WCSessionUserInfoTransfer,
-        error: Error?
-    ) {
+    func session(_ session: WCSession, didFinish userInfoTransfer: WCSessionUserInfoTransfer, error: Error?) {
         if let error = error {
             print("❌ UserInfo transfer failed: \(error.localizedDescription)")
         } else {
-            print("✅ UserInfo transfer completed successfully")
+            if let deliveryID = userInfoTransfer.userInfo["deliveryID"] as? String {
+                removePendingSession(deliveryID: deliveryID)
+            }
+            print("✅ OS completed background transfer successfully")
         }
     }
 }

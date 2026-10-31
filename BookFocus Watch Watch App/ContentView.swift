@@ -1,86 +1,73 @@
-//
-//  ContentView.swift
-//  BookFocus Watch Watch App
-//
-//  Refactored: Timer controls integrated directly in book list
-//  Updated: Added page information display (current/total pages)
-//
-
 import SwiftUI
+import Combine
 
 struct ContentView: View {
-    @StateObject private var timerViewModel = TimerViewModel.shared
+    @ObservedObject private var timerViewModel = TimerViewModel.shared
     @Environment(\.scenePhase) private var scenePhase
     
     @State private var books: [TimerStateManager.BookData] = []
-    @State private var refreshTimer: Timer?
-    @State private var showEndPageInput = false
     @State private var selectedBook: TimerStateManager.BookData?
-    @State private var wasShowingEndPageInput = false
+    
+    @State private var isColdLoading = true
+    @State private var pollingCancellable: AnyCancellable?
+    
+    private let inkColor = Color.white
     
     var body: some View {
         NavigationStack {
             Group {
-                if books.isEmpty {
+                if isColdLoading && books.isEmpty {
+                    VStack(spacing: 8) {
+                        ProgressView().tint(inkColor)
+                        Text("loading...")
+                            .font(.custom("ChalkboardSE-Regular", size: 14))
+                            .foregroundColor(inkColor.opacity(0.7))
+                    }
+                } else if books.isEmpty {
                     emptyStateView
                 } else {
                     bookListView
                 }
             }
-            .navigationTitle("Books")
-            .onAppear {
-                setupView()
-            }
-            .onDisappear {
-                cleanupView()
+            .navigationTitle("books.")
+            .task {
+                await performColdLaunchSafeSetup()
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
-                handleScenePhaseChange(oldPhase: oldPhase, newPhase: newPhase)
+                handleScenePhaseChange(newPhase: newPhase)
             }
-            .onChange(of: showEndPageInput) { oldValue, newValue in
-                // Detect when EndPageInputView is dismissed without saving
-                if oldValue == true && newValue == false && selectedBook != nil {
-                    print("⚠️ EndPageInputView dismissed without saving")
-                    if let book = selectedBook {
-                        timerViewModel.stopTimer(for: book.id)
-                    }
-                    selectedBook = nil
-                }
+            .onOpenURL { url in
+                handleDeepLink(url)
             }
-            .sheet(isPresented: $showEndPageInput) {
-                if let book = selectedBook {
-                    EndPageInputView(
-                        book: book,
-                        elapsedTime: timerViewModel.getElapsedTime(for: book.id)
-                    ) { updatedBook in
-                        handleBookUpdate(updatedBook)
-                    }
+            .fullScreenCover(item: $selectedBook) { book in
+                EndPageInputView(
+                    book: book,
+                    elapsedTime: timerViewModel.getElapsedTime(for: book.id)
+                ) { updatedBook in
+                    handleBookUpdate(updatedBook)
                 }
             }
         }
     }
     
-    // MARK: - Empty State
-    
+    // MARK: - Empty State (아날로그 감성)
     private var emptyStateView: some View {
         VStack(spacing: 12) {
-            Image(systemName: "book.closed")
-                .font(.largeTitle)
-                .foregroundColor(.secondary)
-            
-            Text("No Books")
-                .font(.headline)
-            
-            Text("Add books from the iPhone app")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            Image(systemName: "book")
+                .font(.system(size: 40, weight: .light))
+                .foregroundColor(inkColor.opacity(0.5))
+            Text("no books.")
+                .font(.custom("ChalkboardSE-Bold", size: 18))
+                .foregroundStyle(inkColor)
+            Text("add books from the iPhone app.")
+                .font(.custom("ChalkboardSE-Regular", size: 14))
+                .foregroundColor(inkColor.opacity(0.7))
                 .multilineTextAlignment(.center)
         }
         .padding()
     }
     
     // MARK: - Book List
-    
     private var bookListView: some View {
         List {
             ForEach(books) { book in
@@ -88,233 +75,92 @@ struct ContentView: View {
                     book: book,
                     timerViewModel: timerViewModel,
                     onStop: {
-                        handleStop(for: book)
+                        timerViewModel.prepareForCompletion(bookID: book.id)
+                        selectedBook = book
                     }
                 )
+                .listRowBackground(Color.clear) // 리스트 배경색 투명화
             }
         }
         .listStyle(.plain)
     }
     
-    // MARK: - Setup & Cleanup
-    
-    private func setupView() {
-        // Activate WCSession
-        _ = WatchSessionManager.shared
+    // MARK: - 🚀 Cold-Launch Safe Setup
+    @MainActor
+    private func performColdLaunchSafeSetup() async {
+        _ = await WatchDueReminderScheduler.requestAuthorizationIfNeeded()
+        await fetchBooksFromDiskOffMainThread()
         
-        // Load books
-        loadBooks()
+        withAnimation {
+            self.isColdLoading = false
+        }
+        startPolling()
+    }
+    
+    private func fetchBooksFromDiskOffMainThread() async {
+        let loadedBooks: [TimerStateManager.BookData] = await Task.detached(priority: .userInitiated) {
+            guard let defaults = UserDefaults(suiteName: "group.com.Jaemin.FocusReader"),
+                  let data = defaults.data(forKey: "books.data"),
+                  let decoded = try? JSONDecoder().decode([TimerStateManager.BookData].self, from: data),
+                  !decoded.isEmpty else {
+                return await TimerStateManager.shared.loadBooks()
+            }
+            return decoded
+        }.value
         
-        // Start refresh timer
-        startRefreshTimer()
-    }
-    
-    private func cleanupView() {
-        refreshTimer?.invalidate()
-        refreshTimer = nil
-    }
-    
-    private func loadBooks() {
-        books = TimerStateManager.shared.loadBooks()
-        print("📚 Loaded \(books.count) books")
-    }
-    
-    private func startRefreshTimer() {
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            loadBooks()
+        if loadedBooks != self.books {
+            self.books = loadedBooks
+            TimerStateManager.shared.saveBooks(loadedBooks)
+            timerViewModel.refreshFromDisk()
         }
     }
     
-    // MARK: - Actions
-    
-    private func handleStop(for book: TimerStateManager.BookData) {
-        selectedBook = book
-        showEndPageInput = true
+    // MARK: - Polling Timer Lifecycle
+    private func startPolling() {
+        stopPolling()
+        pollingCancellable = Timer.publish(every: 3.0, on: .main, in: .common)
+            .autoconnect()
+            .sink { _ in
+                guard scenePhase == .active else { return }
+                timerViewModel.processPendingWidgetAction()
+                Task { await fetchBooksFromDiskOffMainThread() }
+            }
     }
     
+    private func stopPolling() {
+        pollingCancellable?.cancel()
+        pollingCancellable = nil
+    }
+    
+    // MARK: - Handlers
     private func handleBookUpdate(_ updatedBook: TimerStateManager.BookData) {
-        print("🔄 handleBookUpdate called for: \(updatedBook.title)")
-        print("   Updated page: \(updatedBook.currentPage)")
-        
-        // Update local book list immediately
         if let index = books.firstIndex(where: { $0.id == updatedBook.id }) {
             books[index] = updatedBook
-            print("✅ Local books array updated at index \(index)")
         }
-        
-        // Clear timer state for this book
         timerViewModel.stopTimer(for: updatedBook.id)
-        
-        // Reset selection
         selectedBook = nil
-        showEndPageInput = false
-        wasShowingEndPageInput = false
         
-        // Force reload from TimerStateManager to ensure sync
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            loadBooks()
-            print("🔄 Books reloaded after update")
-        }
-        
-        print("✅ Book updated: \(updatedBook.title), Page: \(updatedBook.currentPage)")
-    }
-    
-    // MARK: - Scene Phase Handling
-    
-    private func handleScenePhaseChange(oldPhase: ScenePhase, newPhase: ScenePhase) {
-        print("🔄 Scene phase changed: \(oldPhase) → \(newPhase)")
-        
-        // Track if EndPageInputView was showing
-        if newPhase == .background || newPhase == .inactive {
-            wasShowingEndPageInput = showEndPageInput
-            
-            if showEndPageInput {
-                print("⚠️ App going to background/sleep with EndPageInputView open")
-            }
-        }
-        
-        // Reset when returning from background/sleep
-        if oldPhase == .background && newPhase == .active {
-            print("✅ App returned from background")
-            
-            // If EndPageInputView was showing, dismiss it and reset timer
-            if wasShowingEndPageInput {
-                print("🔄 Resetting EndPageInputView and timer after sleep")
-                
-                if let book = selectedBook {
-                    timerViewModel.stopTimer(for: book.id)
-                }
-                
-                showEndPageInput = false
-                selectedBook = nil
-                wasShowingEndPageInput = false
-                
-                // Reload books to refresh UI
-                loadBooks()
-            } else {
-                // Also reload when returning from background
-                loadBooks()
-            }
-        }
-    }
-}
-
-// MARK: - Book Row View
-
-struct BookRowView: View {
-    let book: TimerStateManager.BookData
-    @ObservedObject var timerViewModel: TimerViewModel
-    let onStop: () -> Void
-    
-    private var isRunning: Bool {
-        timerViewModel.isRunning(for: book.id)
-    }
-    
-    private var elapsedTime: TimeInterval {
-        timerViewModel.getElapsedTime(for: book.id)
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Book Title + Page Info
-            HStack(alignment: .top, spacing: 8) {
-                Text(book.title)
-                    .font(.headline)
-                    .lineLimit(2)
-                
-                Spacer(minLength: 4)
-                
-                // Page Information
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(book.currentPage)")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(pageColor)
-                    
-                    Text("/ \(book.totalPages)")
-                        .font(.system(size: 11))
-                        .foregroundColor(.gray)
-                }
-            }
-            
-            // Timer Display
-            if elapsedTime > 0 || isRunning {
-                Text(formatTime(elapsedTime))
-                    .font(.system(size: 20, weight: .semibold, design: .monospaced))
-                    .foregroundColor(isRunning ? .green : .secondary)
-            }
-            
-            // Control Buttons
-            HStack(spacing: 8) {
-                // Play/Pause Button
-                Button {
-                    if isRunning {
-                        timerViewModel.pauseTimer(for: book.id)
-                    } else {
-                        timerViewModel.startOrResumeTimer(for: book)
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: isRunning ? "pause.fill" : "play.fill")
-                            .font(.caption)
-                        Text(isRunning ? "Pause" : "Play")
-                            .font(.caption2)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                }
-                .buttonStyle(.bordered)
-                .tint(isRunning ? .orange : .green)
-                
-                // Stop Button
-                Button {
-                    onStop()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "stop.fill")
-                            .font(.caption)
-                        Text("Stop")
-                            .font(.caption2)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                }
-                .buttonStyle(.bordered)
-                .tint(.red)
-                .disabled(!isRunning && elapsedTime == 0)
-                .opacity((!isRunning && elapsedTime == 0) ? 0.5 : 1.0)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-    
-    // MARK: - Page Color
-    
-    private var pageColor: Color {
-        let progress = Double(book.currentPage) / Double(book.totalPages)
-        switch progress {
-        case 0..<0.3:
-            return .red
-        case 0.3..<0.7:
-            return .orange
-        case 0.7..<1.0:
-            return .green
-        default:
-            return .blue // 완료
+        Task {
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            await fetchBooksFromDiskOffMainThread()
         }
     }
     
-    // MARK: - Format Time
-    
-    private func formatTime(_ time: TimeInterval) -> String {
-        let h = Int(time) / 3600
-        let m = Int(time) / 60 % 60
-        let s = Int(time) % 60
-        return h > 0
-            ? String(format: "%d:%02d:%02d", h, m, s)
-            : String(format: "%d:%02d", m, s)
+    private func handleScenePhaseChange(newPhase: ScenePhase) {
+        switch newPhase {
+        case .active:
+            startPolling()
+            timerViewModel.processPendingWidgetAction()
+            Task { await fetchBooksFromDiskOffMainThread() }
+        case .background, .inactive:
+            stopPolling()
+        @unknown default: break
+        }
     }
-}
-
-#Preview {
-    ContentView()
+    
+    private func handleDeepLink(_ url: URL) {
+        guard url.scheme == "bookfocus" || url.scheme == "focusreader" else { return }
+        timerViewModel.processPendingWidgetAction()
+        print("⌚️ Opened via widget deep link: \(url)")
+    }
 }

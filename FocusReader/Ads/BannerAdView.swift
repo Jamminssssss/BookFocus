@@ -66,41 +66,55 @@ private func bannerHeight(
 }
 
 struct AdaptiveTopBannerView: View {
+    @State private var isAdConfigurationReady = false
     @ObservedObject private var adControlManager = AdControlManager.shared
     @Environment(\.horizontalSizeClass) private var hSize
     @Environment(\.verticalSizeClass) private var vSize
 
     var body: some View {
-        if adControlManager.shouldShowBannerAds {
-            GeometryReader { geo in
-                BannerAdView(adUnitID: "ca-app-pub-3940256099942544/2934735716")
-                    .frame(
-                        width: geo.size.width,
-                        height: bannerHeight(horizontal: hSize, vertical: vSize)
-                    )
+        Group {
+            if isAdConfigurationReady && adControlManager.shouldShowBannerAds {
+                GeometryReader { geo in
+                    BannerAdView(adUnitID: AdConfiguration.topBannerAdUnitID)
+                        .frame(
+                            width: geo.size.width,
+                            height: bannerHeight(horizontal: hSize, vertical: vSize)
+                        )
+                }
+                .frame(height: bannerHeight(horizontal: hSize, vertical: vSize))
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
-            .frame(height: bannerHeight(horizontal: hSize, vertical: vSize))
-            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+        .task {
+            await AdConfiguration.prepare()
+            isAdConfigurationReady = true
         }
     }
 }
 
 struct AdaptiveBottomBannerView: View {
+    @State private var isAdConfigurationReady = false
     @ObservedObject private var adControlManager = AdControlManager.shared
     @Environment(\.horizontalSizeClass) private var hSize
     @Environment(\.verticalSizeClass) private var vSize
 
     var body: some View {
-        if adControlManager.shouldShowBannerAds {
-            GeometryReader { geo in
-                BannerAdView(adUnitID: "ca-app-pub-3940256099942544/2934735716")
-                    .frame(
-                        width: geo.size.width,
-                        height: bannerHeight(horizontal: hSize, vertical: vSize)
-                    )
+        Group {
+            if isAdConfigurationReady && adControlManager.shouldShowBannerAds {
+                GeometryReader { geo in
+                    BannerAdView(adUnitID: AdConfiguration.bottomBannerAdUnitID)
+                        .frame(
+                            width: geo.size.width,
+                            height: bannerHeight(horizontal: hSize, vertical: vSize)
+                        )
+                }
+                .frame(height: bannerHeight(horizontal: hSize, vertical: vSize))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            .frame(height: bannerHeight(horizontal: hSize, vertical: vSize))
-            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+        .task {
+            await AdConfiguration.prepare()
+            isAdConfigurationReady = true
         }
     }
 }

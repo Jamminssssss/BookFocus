@@ -1,467 +1,355 @@
-// FocusReader/Utils/WatchConnectivity.swift
-// ✅ 수정됨: 워치에서 저장한 세션도 캘린더에 반영되도록 EventKit 추가
+//
+//  WatchConnectivity.swift
+//  FocusReader
+//
 
 import Foundation
 import WatchConnectivity
 import SwiftData
-import EventKit  // ⭐ EventKit import 추가
+import WidgetKit
 
 final class WatchSyncManager: NSObject, WCSessionDelegate {
     
     static let shared = WatchSyncManager()
-    
     private let appGroupID = "group.com.Jaemin.FocusReader"
     
-    // SwiftData ModelContext를 외부에서 설정
-    var modelContext: ModelContext?
-    
-    // ⭐ EventStore 추가 (캘린더 이벤트 생성용)
-    private let eventStore = EKEventStore()
-    
-    private override init() {
-        super.init()
+    // ✅ modelContext가 주입될 때까지 보류된 작업을 저장하는 배열
+    var modelContext: ModelContext? {
+        didSet {
+            if modelContext != nil {
+                flushPendingContextTasks()
+            }
+        }
     }
+    private var pendingContextTasks: [() -> Void] = []
     
-    // 🔥 App에서 명시적으로 시작
+    private var isSessionActivated = false
+    private var handledCommandIDs: Set<UUID> = []
+    
+    private override init() { super.init() }
+    
     func start() {
         activate()
-        sendCachedBooksIfNeeded()
-        // AppGroup의 세션 데이터 확인
+        // 앱 실행 시 AppGroup에 쌓인 세션들을 처리
         processPendingSessions()
     }
     
-    // MARK: - WCSession 활성화
     private func activate() {
-        guard WCSession.isSupported() else {
-            print("❌ WCSession not supported")
-            return
-        }
-        
+        guard WCSession.isSupported() else { return }
         let session = WCSession.default
         session.delegate = self
         session.activate()
-        print("📱 WCSession activation initiated")
     }
     
-    // MARK: - 📤 책 목록 전송
-    func sendBooksToWatch(_ books: [TimerStateManager.BookData]) {
-        
-        // 1️⃣ AppGroup에 항상 저장 (워치 fallback)
-        saveBooksToAppGroup(books)
-        
-        guard WCSession.default.isPaired,
-              WCSession.default.isWatchAppInstalled else {
-            print("❌ Watch not paired or not installed")
-            return
-        }
-        
-        guard let data = try? JSONEncoder().encode(books) else {
-            print("❌ Failed to encode books")
-            return
-        }
-        
-        let payload: [String: Any] = ["books": data]
-        
-        // 2️⃣ 도달 가능하면 즉시 전송
-        if WCSession.default.isReachable {
-            WCSession.default.sendMessage(payload, replyHandler: nil) { error in
-                print("❌ sendMessage error:", error.localizedDescription)
-            }
-            print("📡 Sent books via sendMessage:", books.count)
+    // ✅ modelContext가 아직 없으면 클로저로 묶어서 대기열에 저장, 있으면 즉시 실행
+    private func performWithContext(task: @escaping (ModelContext) -> Void) {
+        if let context = modelContext {
+            task(context)
         } else {
-            // 3️⃣ 아니면 백그라운드 전송
+            print("⏳ 아이폰: modelContext가 아직 주입되지 않아 작업을 대기열에 추가합니다.")
+            pendingContextTasks.append { [weak self] in
+                guard let self = self, let context = self.modelContext else { return }
+                task(context)
+            }
+        }
+    }
+    
+    // 대기열에 있던 작업들을 한 번에 실행
+    private func flushPendingContextTasks() {
+        guard !pendingContextTasks.isEmpty else { return }
+        print("✅ 아이폰: modelContext 주입 완료. 대기 중인 \(pendingContextTasks.count)개의 작업을 실행합니다.")
+        pendingContextTasks.forEach { $0() }
+        pendingContextTasks.removeAll()
+    }
+    
+    func sendBooksToWatch(_ books: [TimerStateManager.BookData], isFullSnapshot: Bool = false) {
+        saveBooksToAppGroup(books, isFullSnapshot: isFullSnapshot)
+        guard WCSession.default.isPaired, WCSession.default.isWatchAppInstalled else { return }
+        
+        guard isSessionActivated else {
+            return
+        }
+        guard let data = try? JSONEncoder().encode(books) else { return }
+        let payload: [String: Any] = [
+            "type": "booksSync",
+            "books": data,
+            "isFullSnapshot": isFullSnapshot,
+            "sentAt": Date().timeIntervalSince1970
+        ]
+        
+        if WCSession.default.isReachable {
+            WCSession.default.sendMessage(payload, replyHandler: nil) { _ in
+                WCSession.default.transferUserInfo(payload)
+            }
+        } else {
             WCSession.default.transferUserInfo(payload)
-            print("📦 Sent books via transferUserInfo:", books.count)
         }
     }
     
-    // MARK: - 📤 반납일 그룹 알림 전송
     func sendDueReminderGroupToWatch(_ payload: WatchDueReminderScheduler.DueGroupPayload) {
-        guard WCSession.default.isPaired,
-              WCSession.default.isWatchAppInstalled else {
-            print("❌ Watch not paired or not installed")
-            return
-        }
+        guard WCSession.default.isPaired, WCSession.default.isWatchAppInstalled,
+              let data = try? JSONEncoder().encode(payload) else { return }
         
-        guard let payloadData = try? JSONEncoder().encode(payload) else {
-            print("❌ Failed to encode due reminder group payload")
-            return
-        }
-        
-        let message: [String: Any] = [
-            "type": "dueReminderGroup",
-            "payload": payloadData
-        ]
-        
-        // 도달 가능하면 즉시 전송
+        let msg: [String: Any] = ["type": "dueReminderGroup", "payload": data]
         if WCSession.default.isReachable {
-            WCSession.default.sendMessage(message, replyHandler: nil) { error in
-                print("❌ sendMessage error (dueReminderGroup):", error.localizedDescription)
-            }
-            print("📡 Sent due reminder group via sendMessage:", payload.dateKey)
+            WCSession.default.sendMessage(msg, replyHandler: nil) { _ in WCSession.default.transferUserInfo(msg) }
         } else {
-            // 백그라운드 전송
-            WCSession.default.transferUserInfo(message)
-            print("📦 Sent due reminder group via transferUserInfo:", payload.dateKey)
+            WCSession.default.transferUserInfo(msg)
         }
     }
     
-    // MARK: - 📤 반납일 그룹 알림 취소
     func cancelDueReminderGroupOnWatch(dateKey: String) {
-        guard WCSession.default.isPaired,
-              WCSession.default.isWatchAppInstalled else {
-            print("❌ Watch not paired or not installed")
-            return
-        }
-        
-        let message: [String: Any] = [
-            "type": "cancelDueReminderGroup",
-            "dateKey": dateKey
-        ]
-        
-        // 도달 가능하면 즉시 전송
+        guard WCSession.default.isPaired, WCSession.default.isWatchAppInstalled else { return }
+        let msg: [String: Any] = ["type": "cancelDueReminderGroup", "dateKey": dateKey]
         if WCSession.default.isReachable {
-            WCSession.default.sendMessage(message, replyHandler: nil) { error in
-                print("❌ sendMessage error (cancelDueReminderGroup):", error.localizedDescription)
-            }
-            print("📡 Sent cancel due reminder group via sendMessage:", dateKey)
+            WCSession.default.sendMessage(msg, replyHandler: nil) { _ in WCSession.default.transferUserInfo(msg) }
         } else {
-            // 백그라운드 전송
-            WCSession.default.transferUserInfo(message)
-            print("📦 Sent cancel due reminder group via transferUserInfo:", dateKey)
+            WCSession.default.transferUserInfo(msg)
         }
     }
     
-    // MARK: - AppGroup 저장 (Fallback)
-    private func saveBooksToAppGroup(_ books: [TimerStateManager.BookData]) {
-        guard let defaults = UserDefaults(suiteName: appGroupID),
-              let data = try? JSONEncoder().encode(books) else { return }
-        
+    // 💡 실시간 타이머 동기화 전용 로켓배송 창구
+    func sendTimerSyncToWatch(_ payload: [String: Any]) {
+        guard WCSession.default.isPaired, WCSession.default.isWatchAppInstalled else { return }
+        try? WCSession.default.updateApplicationContext(payload)
+        if WCSession.default.isReachable {
+            WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+        }
+    }
+    
+    private func saveBooksToAppGroup(_ books: [TimerStateManager.BookData], isFullSnapshot: Bool) {
+        guard let defaults = UserDefaults(suiteName: appGroupID) else { return }
+        var cached: [String: TimerStateManager.BookData] = [:]
+        if !isFullSnapshot,
+           let existingData = defaults.data(forKey: "books.data"),
+           let existing = try? JSONDecoder().decode([TimerStateManager.BookData].self, from: existingData) {
+            cached = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+        }
+        for book in books { cached[book.id] = book }
+        let result = isFullSnapshot ? books : Array(cached.values)
+        guard let data = try? JSONEncoder().encode(result) else { return }
         defaults.set(data, forKey: "books.data")
-        defaults.synchronize()
-        
-        print("💾 Books saved to AppGroup:", books.count)
+        WidgetCenter.shared.reloadTimelines(ofKind: AppGroupKey.homeWidgetKind)
     }
     
-    // MARK: - 이전 데이터 재전송
     private func sendCachedBooksIfNeeded() {
-        guard let defaults = UserDefaults(suiteName: appGroupID),
-              let data = defaults.data(forKey: "books.data"),
-              let books = try? JSONDecoder().decode([TimerStateManager.BookData].self, from: data)
-        else { return }
-        
-        sendBooksToWatch(books)
+        guard let data = UserDefaults(suiteName: appGroupID)?.data(forKey: "books.data"),
+              let books = try? JSONDecoder().decode([TimerStateManager.BookData].self, from: data) else { return }
+        sendBooksToWatch(books, isFullSnapshot: true)
     }
     
-    // MARK: - 📥 Watch → iOS 메시지 처리
     func handleWatchMessage(_ payload: [String: Any]) {
-        guard let type = payload["type"] as? String else {
-            print("⚠️ Watch: Received message without type")
-            return
-        }
+        guard let type = payload["type"] as? String else { return }
         
         if type == "sessionSaved" {
+            print("📥 아이폰: 'sessionSaved' 이벤트 수신")
             handleSessionSaved(payload)
-        } else if type == "bookUpdated" {
+        }
+        else if type == "bookUpdated" {
+            print("📥 아이폰: 'bookUpdated' 이벤트 수신")
             handleBookUpdated(payload)
         }
+        else if type == "timerCommand" {
+            handleTimerCommand(payload)
+        }
+        else if type == "requestTimerState" {
+            Task { @MainActor in
+                ReadingTimerManager.shared.applyRemoteControl(.requestState)
+            }
+        }
+        else if type == "requestBooks" {
+            performWithContext { context in
+                DispatchQueue.main.async {
+                    let descriptor = FetchDescriptor<Book>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+                    let books = (try? context.fetch(descriptor)) ?? []
+                    self.sendBooksToWatch(
+                        books.map { TimerStateManager.BookData.from($0) },
+                        isFullSnapshot: true
+                    )
+                }
+            }
+        }
+    }
+
+    private func handleTimerCommand(_ payload: [String: Any]) {
+        guard let data = payload["command"] as? Data,
+              let command = try? JSONDecoder().decode(TimerSyncCommand.self, from: data),
+              !handledCommandIDs.contains(command.id) else { return }
+
+        handledCommandIDs.insert(command.id)
+        if handledCommandIDs.count > 100 { handledCommandIDs.removeAll(keepingCapacity: true) }
+
+        performWithContext { context in
+            DispatchQueue.main.async {
+                let manager = ReadingTimerManager.shared
+                if command.action == .start,
+                   manager.currentSession == nil,
+                   let uuid = UUID(uuidString: command.bookID) {
+                    let descriptor = FetchDescriptor<Book>(predicate: #Predicate<Book> { $0.id == uuid })
+                    let book = try? context.fetch(descriptor).first
+                    manager.applyRemoteControl(command.action, for: book)
+                } else if manager.activeBookID?.uuidString == command.bookID || command.action == .requestState {
+                    manager.applyRemoteControl(command.action)
+                }
+            }
+        }
     }
     
-    // MARK: - 세션 저장 처리
     private func handleSessionSaved(_ payload: [String: Any]) {
-        guard let sessionData = payload["session"] as? Data,
-              let bookData = payload["book"] as? Data,
-              let sessionDict = try? JSONSerialization.jsonObject(with: sessionData) as? [String: Any],
-              let updatedBook = try? JSONDecoder().decode(TimerStateManager.BookData.self, from: bookData),
-              let modelContext = modelContext else {
-            print("❌ Watch: Failed to decode session or book data")
+        guard let sData = payload["session"] as? Data, let bData = payload["book"] as? Data,
+              let sDict = try? JSONSerialization.jsonObject(with: sData) as? [String: Any],
+              let uBook = try? JSONDecoder().decode(TimerStateManager.BookData.self, from: bData) else {
+            print("❌ 아이폰: sessionSaved 페이로드 디코딩 실패")
             return
         }
         
-        saveSessionToSwiftData(sessionDict: sessionDict, updatedBook: updatedBook, modelContext: modelContext)
+        performWithContext { context in
+            DispatchQueue.main.async {
+                self.saveSessionToSwiftData(sessionDict: sDict, updatedBook: uBook, modelContext: context)
+            }
+        }
     }
     
-    // MARK: - 책 업데이트 처리
     private func handleBookUpdated(_ payload: [String: Any]) {
-        guard let bookData = payload["book"] as? Data,
-              let updatedBook = try? JSONDecoder().decode(TimerStateManager.BookData.self, from: bookData),
-              let modelContext = modelContext else {
-            print("❌ Watch: Failed to decode book data")
+        guard let bData = payload["book"] as? Data,
+              let uBook = try? JSONDecoder().decode(TimerStateManager.BookData.self, from: bData) else {
+            print("❌ 아이폰: bookUpdated 페이로드 디코딩 실패")
             return
         }
         
-        updateBookInSwiftData(updatedBook: updatedBook, modelContext: modelContext)
+        performWithContext { context in
+            DispatchQueue.main.async {
+                self.updateBookInSwiftData(updatedBook: uBook, modelContext: context)
+            }
+        }
     }
     
-    // MARK: - SwiftData에 세션 저장 (⭐ 캘린더 이벤트 추가)
-    private func saveSessionToSwiftData(
-        sessionDict: [String: Any],
-        updatedBook: TimerStateManager.BookData,
-        modelContext: ModelContext
-    ) {
-        guard let bookIDString = sessionDict["bookID"] as? String,
-              let bookID = UUID(uuidString: bookIDString),
-              let startPage = sessionDict["startPage"] as? Int,
-              let endPage = sessionDict["endPage"] as? Int,
-              let duration = sessionDict["duration"] as? TimeInterval,
-              let startTimeInterval = sessionDict["startTime"] as? TimeInterval else {
-            print("❌ Watch: Invalid session data")
+    private func saveSessionToSwiftData(sessionDict: [String: Any], updatedBook: TimerStateManager.BookData, modelContext: ModelContext) {
+        guard let idStr = sessionDict["bookID"] as? String, let bookID = UUID(uuidString: idStr),
+              let startPage = sessionDict["startPage"] as? Int, let endPage = sessionDict["endPage"] as? Int,
+              let duration = sessionDict["duration"] as? TimeInterval, let startInterval = sessionDict["startTime"] as? TimeInterval else {
+            print("❌ 아이폰: saveSessionToSwiftData 파라미터 파싱 실패")
             return
         }
         
-        // 책 찾기
-        let fetchDescriptor = FetchDescriptor<Book>(
-            predicate: #Predicate<Book> { $0.id == bookID }
-        )
-        
-        guard let book = try? modelContext.fetch(fetchDescriptor).first else {
-            print("❌ Watch: Book not found: \(bookIDString)")
+        let desc = FetchDescriptor<Book>(predicate: #Predicate<Book> { $0.id == bookID })
+        guard let book = try? modelContext.fetch(desc).first else {
+            print("❌ 아이폰: ID가 \(bookID)인 책을 DB에서 찾을 수 없습니다.")
+            return
+        }
+
+        let startDate = Date(timeIntervalSince1970: startInterval)
+        let receivedSessionID = (sessionDict["sessionID"] as? String).flatMap(UUID.init(uuidString:))
+        let isDuplicate = book.sessions?.contains { existing in
+            if let receivedSessionID, existing.id == receivedSessionID { return true }
+            return existing.startTime == startDate
+                && existing.startPage == startPage
+                && existing.endPage == endPage
+        } ?? false
+        guard !isDuplicate else {
+            ReadingTimerManager.shared.completeSessionFromWatch(bookID: idStr)
+            print("ℹ️ iPhone: duplicate Watch session ignored")
             return
         }
         
-        // 세션 생성
-        let startTime = Date(timeIntervalSince1970: startTimeInterval)
-        let session = ReadingSession(startTime: startTime, startPage: startPage)
-        session.endSession(endPage: endPage)
-        session.duration = duration
+        let session = ReadingSession(id: receivedSessionID ?? UUID(), startTime: startDate, startPage: startPage)
+        session.finalize(endPage: endPage, measuredDuration: duration)
         
-        // 책에 세션 추가
         book.addSession(session)
         modelContext.insert(session)
-        
-        // 책 정보 업데이트
         book.currentPage = updatedBook.currentPage
         book.lastUpdated = updatedBook.lastUpdated
         book.checkCompletion()
         
-        // ⭐ 캘린더 이벤트 생성 (워치에서 온 세션도 캘린더에 추가)
-        addToCalendar(book: book, session: session, startPage: startPage, endPage: endPage)
+        // ❌ 기존 독서 세션 캘린더 추가 로직 제거됨
         
-        // 저장
-        do {
-            try modelContext.save()
-            print("✅ Watch: Session saved to SwiftData - Book: \(book.title), Pages: \(startPage)-\(endPage), Duration: \(duration)s")
-            print("📅 Watch: Calendar event created for session")
-        } catch {
-            print("❌ Watch: Failed to save session: \(error)")
-        }
+        try? modelContext.save()
+        ReadingTimerManager.shared.completeSessionFromWatch(bookID: idStr)
+        let unit = (book.format == .ebook) ? "%" : "p"
+        print("💾 아이폰: SwiftData에 독서 세션 및 페이지(\(endPage)\(unit)) 업데이트 성공!")
     }
     
-    // MARK: - SwiftData에서 책 업데이트
-    private func updateBookInSwiftData(
-        updatedBook: TimerStateManager.BookData,
-        modelContext: ModelContext
-    ) {
-        guard let bookID = UUID(uuidString: updatedBook.id) else {
-            print("❌ Watch: Invalid book ID: \(updatedBook.id)")
-            return
-        }
+    private func updateBookInSwiftData(updatedBook: TimerStateManager.BookData, modelContext: ModelContext) {
+        guard let bookID = UUID(uuidString: updatedBook.id) else { return }
+        let desc = FetchDescriptor<Book>(predicate: #Predicate<Book> { $0.id == bookID })
+        guard let book = try? modelContext.fetch(desc).first else { return }
         
-        let fetchDescriptor = FetchDescriptor<Book>(
-            predicate: #Predicate<Book> { $0.id == bookID }
-        )
-        
-        guard let book = try? modelContext.fetch(fetchDescriptor).first else {
-            print("❌ Watch: Book not found: \(updatedBook.id)")
-            return
-        }
-        
-        // 책 정보 업데이트
         book.currentPage = updatedBook.currentPage
         book.lastUpdated = updatedBook.lastUpdated
         book.checkCompletion()
-        
-        // 저장
-        do {
-            try modelContext.save()
-            print("✅ Watch: Book updated in SwiftData - \(book.title), Page: \(updatedBook.currentPage)")
-        } catch {
-            print("❌ Watch: Failed to update book: \(error)")
-        }
+        try? modelContext.save()
+        let unit = (book.format == .ebook) ? "%" : "p"
+        print("💾 아이폰: SwiftData에 책 페이지(\(updatedBook.currentPage)\(unit)) 업데이트 성공!")
     }
     
-    // MARK: - AppGroup의 대기 중인 세션 처리 (⭐ 캘린더 이벤트 추가)
     func processPendingSessions() {
         guard let defaults = UserDefaults(suiteName: appGroupID),
               let sessions = defaults.array(forKey: "sessions.data") as? [[String: Any]],
-              !sessions.isEmpty,
-              let modelContext = modelContext else {
-            return
-        }
+              !sessions.isEmpty else { return }
         
-        print("📦 Processing \(sessions.count) pending sessions from AppGroup")
-        
-        var processedCount = 0
-        
-        for sessionDict in sessions {
-            guard let bookIDString = sessionDict["bookID"] as? String,
-                  let bookID = UUID(uuidString: bookIDString) else {
-                print("⚠️ Invalid session data, skipping")
-                continue
-            }
-            
-            // 책 찾기
-            let fetchDescriptor = FetchDescriptor<Book>(
-                predicate: #Predicate<Book> { $0.id == bookID }
-            )
-            
-            guard let book = try? modelContext.fetch(fetchDescriptor).first,
-                  let startPage = sessionDict["startPage"] as? Int,
-                  let endPage = sessionDict["endPage"] as? Int,
-                  let duration = sessionDict["duration"] as? TimeInterval,
-                  let startTimeInterval = sessionDict["startTime"] as? TimeInterval else {
-                print("⚠️ Book not found or invalid session data for ID: \(bookIDString)")
-                continue
-            }
-            
-            print("📝 Processing session for book: \(book.title), pages: \(startPage)-\(endPage)")
-            
-            // 세션 생성
-            let startTime = Date(timeIntervalSince1970: startTimeInterval)
-            let session = ReadingSession(startTime: startTime, startPage: startPage)
-            session.endSession(endPage: endPage)
-            session.duration = duration
-            
-            // 책에 세션 추가
-            book.addSession(session)
-            book.currentPage = endPage
-            book.checkCompletion()
-            modelContext.insert(session)
-            
-            // ⭐ 캘린더 이벤트 생성 추가
-            addToCalendar(book: book, session: session, startPage: startPage, endPage: endPage)
-            
-            processedCount += 1
-        }
-        
-        // 저장
-        if processedCount > 0 {
-            do {
-                try modelContext.save()
-                defaults.removeObject(forKey: "sessions.data")
-                defaults.synchronize()
-                print("✅ Successfully processed and saved \(processedCount)/\(sessions.count) sessions from AppGroup")
-                print("📅 Calendar events created for \(processedCount) sessions")
-            } catch {
-                print("❌ Failed to save pending sessions: \(error)")
-            }
-        } else {
-            print("⚠️ No valid sessions to process")
-        }
-    }
-    
-    // MARK: - ⭐ 캘린더 이벤트 생성
-    
-    private func addToCalendar(book: Book, session: ReadingSession, startPage: Int, endPage: Int) {
-        if #available(iOS 17.0, *) {
-            eventStore.requestWriteOnlyAccessToEvents { [weak self] granted, _ in
-                if granted {
-                    DispatchQueue.main.async {
-                        self?.createCalendarEvent(book: book, session: session, startPage: startPage, endPage: endPage)
-                    }
+        performWithContext { context in
+            DispatchQueue.main.async {
+                var processed = 0
+                for sDict in sessions {
+                    guard let idStr = sDict["bookID"] as? String, let bookID = UUID(uuidString: idStr),
+                          let startPage = sDict["startPage"] as? Int, let endPage = sDict["endPage"] as? Int,
+                          let duration = sDict["duration"] as? TimeInterval, let startInterval = sDict["startTime"] as? TimeInterval else { continue }
+                    
+                    let desc = FetchDescriptor<Book>(predicate: #Predicate<Book> { $0.id == bookID })
+                    guard let book = try? context.fetch(desc).first else { continue }
+
+                    let startDate = Date(timeIntervalSince1970: startInterval)
+                    let receivedSessionID = (sDict["sessionID"] as? String).flatMap(UUID.init(uuidString:))
+                    let isDuplicate = book.sessions?.contains { existing in
+                        if let receivedSessionID, existing.id == receivedSessionID { return true }
+                        return existing.startTime == startDate
+                            && existing.startPage == startPage
+                            && existing.endPage == endPage
+                    } ?? false
+                    guard !isDuplicate else { continue }
+                    
+                    let session = ReadingSession(id: receivedSessionID ?? UUID(), startTime: startDate, startPage: startPage)
+                    session.finalize(endPage: endPage, measuredDuration: duration)
+                    
+                    book.addSession(session); book.currentPage = endPage; book.checkCompletion()
+                    context.insert(session)
+                    
+                    // ❌ 기존 독서 세션 캘린더 추가 로직 제거됨
+                    
+                    processed += 1
                 }
-            }
-        } else {
-            eventStore.requestAccess(to: .event) { [weak self] granted, _ in
-                if granted {
-                    DispatchQueue.main.async {
-                        self?.createCalendarEvent(book: book, session: session, startPage: startPage, endPage: endPage)
-                    }
+                
+                if processed > 0 {
+                    try? context.save()
+                    defaults.removeObject(forKey: "sessions.data")
+                    print("💾 아이폰: AppGroup에서 \(processed)개의 펜딩 세션 복구 및 저장 완료")
                 }
             }
         }
     }
     
-    private func createCalendarEvent(book: Book, session: ReadingSession, startPage: Int, endPage: Int) {
-        // 현재 시간대를 사용하는 캘린더 설정
-        var calendar = Calendar.current
-        calendar.timeZone = TimeZone.current
-        
-        let now = Date()
-        let startOfDay = calendar.startOfDay(for: now)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-        
-        // 중복 이벤트 제거
-        let predicate = eventStore.predicateForEvents(withStart: startOfDay, end: endOfDay, calendars: nil)
-        let existingEvents = eventStore.events(matching: predicate)
-        let bookIdentifier = "\(book.title) - \(book.author)"
-        
-        for event in existingEvents {
-            if event.title == bookIdentifier {
-                try? eventStore.remove(event, span: .thisEvent)
+    // MARK: - WCSessionDelegate
+    func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {
+        if state == .activated {
+            isSessionActivated = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.sendCachedBooksIfNeeded()
             }
         }
-        
-        // 세션 시작 시간 사용
-        let eventStartTime = session.startTime
-        
-        // 실제 세션 종료 시간 사용 (또는 1시간 후)
-        let eventEndTime: Date
-        if let endTime = session.endTime {
-            eventEndTime = endTime
-        } else {
-            eventEndTime = calendar.date(byAdding: .hour, value: 1, to: eventStartTime) ?? eventStartTime.addingTimeInterval(3600)
-        }
-        
-        // 이벤트 생성
-        let event = EKEvent(eventStore: eventStore)
-        event.title = bookIdentifier
-        event.notes = "Pages: \(startPage) - \(endPage) (\(endPage - startPage) pages read)"
-        event.startDate = eventStartTime
-        event.endDate = eventEndTime
-        event.timeZone = TimeZone.current
-        event.calendar = eventStore.defaultCalendarForNewEvents
-        
-        do {
-            try eventStore.save(event, span: .thisEvent)
-            print("✅ Calendar event created: \(bookIdentifier)")
-        } catch {
-            print("❌ Failed to create calendar event: \(error)")
-        }
     }
+    func sessionDidBecomeInactive(_ s: WCSession) { isSessionActivated = false }
+    func sessionDidDeactivate(_ s: WCSession) { isSessionActivated = false; WCSession.default.activate() }
+    func sessionReachabilityDidChange(_ s: WCSession) { if s.isReachable { sendCachedBooksIfNeeded() } }
     
-    // MARK: - WCSessionDelegate (iOS 필수 메서드)
-    
-    func session(
-        _ session: WCSession,
-        activationDidCompleteWith activationState: WCSessionActivationState,
-        error: Error?
-    ) {
-        if let error = error {
-            print("❌ WCSession activation error:", error.localizedDescription)
-        } else {
-            print("📱 WCSession activated:", activationState.rawValue)
-        }
+    func session(_ s: WCSession, didReceiveUserInfo u: [String: Any]) {
+        print("📥 아이폰: didReceiveUserInfo 수신")
+        DispatchQueue.main.async { self.handleWatchMessage(u) }
     }
-    
-    func sessionDidBecomeInactive(_ session: WCSession) {
-        print("📱 WCSession became inactive")
+    func session(_ s: WCSession, didReceiveMessage m: [String: Any]) {
+        print("📥 아이폰: didReceiveMessage 수신")
+        DispatchQueue.main.async { self.handleWatchMessage(m) }
     }
-    
-    func sessionDidDeactivate(_ session: WCSession) {
-        print("📱 WCSession deactivated, reactivating...")
-        WCSession.default.activate()
-    }
-    
-    func sessionReachabilityDidChange(_ session: WCSession) {
-        print("📱 WCSession reachability changed: \(session.isReachable)")
-    }
-    
-    // 📥 Watch → iOS (백그라운드)
-    func session(
-        _ session: WCSession,
-        didReceiveUserInfo userInfo: [String : Any]
-    ) {
-        print("📥 Received userInfo from Watch")
-        handleWatchMessage(userInfo)
-    }
-    
-    // 📥 Watch → iOS (즉시)
-    func session(
-        _ session: WCSession,
-        didReceiveMessage message: [String : Any]
-    ) {
-        print("📥 Received message from Watch")
-        handleWatchMessage(message)
+    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String : Any]) {
+        DispatchQueue.main.async { self.handleWatchMessage(applicationContext) }
     }
 }

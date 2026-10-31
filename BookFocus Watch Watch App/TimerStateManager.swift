@@ -1,198 +1,144 @@
-// BookFocus Watch Watch App/TimerStateManager.swift
 import Foundation
 
 class TimerStateManager {
     static let shared = TimerStateManager()
-    
     private let appGroupID = "group.com.Jaemin.FocusReader"
-    private var userDefaults: UserDefaults? {
-        UserDefaults(suiteName: appGroupID)
-    }
+    private var userDefaults: UserDefaults? { UserDefaults(suiteName: appGroupID) }
+    
+    private let statesMapKey = "timer.states.map"
+    private let activeBookIDKey = "timer.activeBookID"
+    private let booksDataKey = "books.data"
     
     private init() {}
     
-    // ✅ 세션 저장 시 AppGroup에도 기록
-    func saveSessionToAppGroup(_ sessionData: [String: Any]) {
+    typealias TimerState = SharedTimerState
+    
+    // MARK: - Timer State Interactors
+    
+    func loadState(forBookID bookID: String) -> TimerState? {
+        return loadAllStatesMap()[bookID]
+    }
+    
+    func setActiveBookID(_ bookID: String, reloadWidget: Bool = true) {
+        userDefaults?.set(bookID, forKey: activeBookIDKey)
+    }
+    
+    func saveState(_ state: TimerState, reloadWidget: Bool = true) {
+        let resolvedBookID = state.bookID ?? userDefaults?.string(forKey: activeBookIDKey) ?? UUID().uuidString
         guard let defaults = userDefaults else { return }
         
-        var sessions = defaults.array(forKey: "sessions.data") as? [[String: Any]] ?? []
-        sessions.append(sessionData)
-        defaults.set(sessions, forKey: "sessions.data")
-        defaults.synchronize()
+        var map = loadAllStatesMap()
+        var updated = state
+        updated.bookID = resolvedBookID
+        map[resolvedBookID] = updated
         
-        print("💾 Session saved to AppGroup: \(sessions.count) total sessions")
+        if let data = try? JSONEncoder().encode(map) {
+            defaults.set(data, forKey: statesMapKey)
+            defaults.set(resolvedBookID, forKey: activeBookIDKey)
+        }
+        
+        if reloadWidget {
+            let widgetState = WidgetTimerState(
+                bookID: resolvedBookID,
+                bookTitle: state.bookTitle,
+                bookAuthor: "",
+                currentPage: state.currentPage,
+                totalPages: state.totalPages,
+                sessionStartDate: state.isRunning ? state.sessionStartTime : nil,
+                accumulatedElapsed: state.pausedTime > 0 ? state.pausedTime : state.elapsedTime,
+                format: state.format
+            )
+            widgetState.save()
+        }
+    }
+    
+    func saveStateAsync(_ state: TimerState, reloadWidget: Bool = true) async {
+        saveState(state, reloadWidget: reloadWidget)
+    }
+    
+    func loadActiveState() -> TimerState? {
+        let map = loadAllStatesMap()
+        let activeID = userDefaults?.string(forKey: activeBookIDKey)
+        
+        if let id = activeID, let state = map[id] {
+            return state
+        }
+        
+        if let firstState = map.values.first, let firstID = firstState.bookID {
+            userDefaults?.set(firstID, forKey: activeBookIDKey)
+            return firstState
+        }
+        return nil
+    }
+    
+    func loadAllStatesMap() -> [String: TimerState] {
+        guard let defaults = userDefaults,
+              let data = defaults.data(forKey: statesMapKey),
+              let map = try? JSONDecoder().decode([String: TimerState].self, from: data) else { return [:] }
+        return map
     }
     
     func clearState() {
-        guard let defaults = userDefaults else { return }
+        guard let bookID = userDefaults?.string(forKey: activeBookIDKey),
+              let defaults = userDefaults else { return }
+        
+        var map = loadAllStatesMap()
+        map.removeValue(forKey: bookID)
+        
+        if let data = try? JSONEncoder().encode(map) {
+            defaults.set(data, forKey: statesMapKey)
+        }
+        defaults.removeObject(forKey: activeBookIDKey)
+        WidgetTimerState.empty.save()
+    }
 
-        defaults.removeObject(forKey: Keys.isRunning)
-        defaults.removeObject(forKey: Keys.bookTitle)
-        defaults.removeObject(forKey: Keys.currentPage)
-        defaults.removeObject(forKey: Keys.totalPages)
-        defaults.removeObject(forKey: Keys.elapsedTime)
-        defaults.removeObject(forKey: Keys.sessionStartTime)
-        defaults.removeObject(forKey: Keys.pausedTime)
-        defaults.removeObject(forKey: Keys.isTimerMode)
-        defaults.removeObject(forKey: Keys.targetMinutes)
-        defaults.removeObject(forKey: Keys.timerEndDate)
-        defaults.removeObject(forKey: Keys.bookID)
-        defaults.synchronize()
-    }
-    
-    // MARK: - Keys
-    private enum Keys {
-        static let isRunning = "timer.isRunning"
-        static let bookTitle = "timer.bookTitle"
-        static let currentPage = "timer.currentPage"
-        static let totalPages = "timer.totalPages"
-        static let elapsedTime = "timer.elapsedTime"
-        static let sessionStartTime = "timer.sessionStartTime"
-        static let pausedTime = "timer.pausedTime"
-        static let isTimerMode = "timer.isTimerMode"
-        static let targetMinutes = "timer.targetMinutes"
-        static let timerEndDate = "timer.timerEndDate"
-        static let bookID = "timer.bookID"
-        
-        // Books list
-        static let booksData = "books.data"
-    }
-    
-    // MARK: - State Structure
-    struct TimerState: Codable {
-        var isRunning: Bool
-        var bookTitle: String
-        var currentPage: Int
-        var totalPages: Int
-        var elapsedTime: TimeInterval
-        var sessionStartTime: Date?
-        var pausedTime: TimeInterval
-        var isTimerMode: Bool
-        var targetMinutes: Int
-        var timerEndDate: Date?
-        var bookID: String?
-        
-        var hasActiveSession: Bool {
-            return elapsedTime > 0 || sessionStartTime != nil
-        }
-    }
-    
-    // MARK: - Book Structure (for watch)
-    struct BookData: Codable, Identifiable {
-        var id: String
-        var title: String
-        var author: String
-        var totalPages: Int
-        var currentPage: Int
-        var createdAt: Date
-        var lastUpdated: Date
-        
-        var checkoutDate: Date?
-        var dueDate: Date?
-        
-        var dueMinus1DayAtNine: Date? {
-            guard let due = dueDate else { return nil }
-            let d = Calendar.current.date(byAdding: .day, value: -1, to: due) ?? due
-            return nineAMLocal(on: d)
-        }
-        
-        var dueDayAtNine: Date? {
-            guard let due = dueDate else { return nil }
-            return nineAMLocal(on: due)
-        }
-        
-        private func nineAMLocal(on date: Date) -> Date {
-            var cal = Calendar.current
-            cal.timeZone = .current
-            let comps = cal.dateComponents([.year, .month, .day], from: date)
-            var nine = DateComponents()
-            nine.year = comps.year
-            nine.month = comps.month
-            nine.day = comps.day
-            nine.hour = 9
-            nine.minute = 0
-            nine.second = 0
-            return cal.date(from: nine) ?? date
-        }
-    }
-    
-    // MARK: - Save State
-    func saveState(_ state: TimerState) {
-        guard let defaults = userDefaults else {
-            print("❌ TimerStateManager: AppGroup UserDefaults를 생성할 수 없습니다")
-            return
-        }
-        
-        defaults.set(state.isRunning, forKey: Keys.isRunning)
-        defaults.set(state.bookTitle, forKey: Keys.bookTitle)
-        defaults.set(state.currentPage, forKey: Keys.currentPage)
-        defaults.set(state.totalPages, forKey: Keys.totalPages)
-        defaults.set(state.elapsedTime, forKey: Keys.elapsedTime)
-        defaults.set(state.pausedTime, forKey: Keys.pausedTime)
-        defaults.set(state.isTimerMode, forKey: Keys.isTimerMode)
-        defaults.set(state.targetMinutes, forKey: Keys.targetMinutes)
-        defaults.set(state.bookID, forKey: Keys.bookID)
-        
-        if let sessionStartTime = state.sessionStartTime {
-            defaults.set(sessionStartTime, forKey: Keys.sessionStartTime)
-        } else {
-            defaults.removeObject(forKey: Keys.sessionStartTime)
-        }
-        
-        if let timerEndDate = state.timerEndDate {
-            defaults.set(timerEndDate, forKey: Keys.timerEndDate)
-        } else {
-            defaults.removeObject(forKey: Keys.timerEndDate)
-        }
-        
-        defaults.synchronize()
-    }
-    
-    // MARK: - Load State
-    func loadState() -> TimerState? {
-        guard let defaults = userDefaults else {
-            print("❌ TimerStateManager: AppGroup UserDefaults를 읽을 수 없습니다")
-            return nil
-        }
-        
-        guard defaults.object(forKey: Keys.bookTitle) != nil else {
-            return nil
-        }
-        
-        let state = TimerState(
-            isRunning: defaults.bool(forKey: Keys.isRunning),
-            bookTitle: defaults.string(forKey: Keys.bookTitle) ?? "",
-            currentPage: defaults.integer(forKey: Keys.currentPage),
-            totalPages: defaults.integer(forKey: Keys.totalPages),
-            elapsedTime: defaults.double(forKey: Keys.elapsedTime),
-            sessionStartTime: defaults.object(forKey: Keys.sessionStartTime) as? Date,
-            pausedTime: defaults.double(forKey: Keys.pausedTime),
-            isTimerMode: defaults.bool(forKey: Keys.isTimerMode),
-            targetMinutes: defaults.integer(forKey: Keys.targetMinutes),
-            timerEndDate: defaults.object(forKey: Keys.timerEndDate) as? Date,
-            bookID: defaults.string(forKey: Keys.bookID)
-        )
-        
-        return state
-    }
-    
-    // MARK: - Books Management
-    func saveBooks(_ books: [BookData]) {
+    func removeState(forBookID bookID: String) {
         guard let defaults = userDefaults else { return }
-        
-        if let encoded = try? JSONEncoder().encode(books) {
-            defaults.set(encoded, forKey: Keys.booksData)
-            defaults.synchronize()
+        var map = loadAllStatesMap()
+        map.removeValue(forKey: bookID)
+        if let data = try? JSONEncoder().encode(map) {
+            defaults.set(data, forKey: statesMapKey)
+        }
+        if defaults.string(forKey: activeBookIDKey) == bookID {
+            if let nextID = map.keys.first {
+                defaults.set(nextID, forKey: activeBookIDKey)
+            } else {
+                defaults.removeObject(forKey: activeBookIDKey)
+            }
         }
     }
+    
+    func clearActiveState() {
+        guard let defaults = userDefaults else { return }
+        defaults.removeObject(forKey: activeBookIDKey)
+        defaults.removeObject(forKey: statesMapKey)
+        WidgetTimerState.empty.save()
+    }
+    
+    func getWidgetAction() -> String? {
+        guard let defaults = userDefaults,
+              let action = defaults.string(forKey: "widget.action") else { return nil }
+        defaults.removeObject(forKey: "widget.action")
+        return action
+    }
+    
+    // MARK: - 📚 Watch Sync Data Models & Book Management
+    
+    typealias BookData = SharedBookData
     
     func loadBooks() -> [BookData] {
         guard let defaults = userDefaults,
-              let data = defaults.data(forKey: Keys.booksData),
+              let data = defaults.data(forKey: booksDataKey),
               let books = try? JSONDecoder().decode([BookData].self, from: data) else {
             return []
         }
         return books
+    }
+    
+    func saveBooks(_ books: [BookData]) {
+        guard let defaults = userDefaults,
+              let data = try? JSONEncoder().encode(books) else { return }
+        defaults.set(data, forKey: booksDataKey)
     }
     
     func updateBook(_ book: BookData) {
@@ -205,25 +151,28 @@ class TimerStateManager {
         saveBooks(books)
     }
     
-    // MARK: - Update Running State
-    func updateRunningState(_ isRunning: Bool) {
-        guard let defaults = userDefaults else { return }
-        defaults.set(isRunning, forKey: Keys.isRunning)
-        defaults.synchronize()
+    // MARK: - Cover Image
+    private var coverImagesDirectory: URL? {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else { return nil }
+        let dir = containerURL.appendingPathComponent("CoverImages", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: dir.path) {
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+        return dir
     }
     
-    // MARK: - Action Flags
-    func setAction(_ action: String) {
-        guard let defaults = userDefaults else { return }
-        defaults.set(action, forKey: "watch.action")
-        defaults.synchronize()
+    func saveCoverImage(_ data: Data, forBookID bookID: String) {
+        guard let fileURL = coverImagesDirectory?.appendingPathComponent(bookID) else { return }
+        try? data.write(to: fileURL, options: .atomic)
     }
     
-    func getAction() -> String? {
-        guard let defaults = userDefaults else { return nil }
-        let action = defaults.string(forKey: "watch.action")
-        defaults.removeObject(forKey: "watch.action")
-        defaults.synchronize()
-        return action
+    func loadCoverImage(forBookID bookID: String?) -> Data? {
+        guard let bookID, let fileURL = coverImagesDirectory?.appendingPathComponent(bookID) else { return nil }
+        return try? Data(contentsOf: fileURL)
+    }
+    
+    func deleteCoverImage(forBookID bookID: String) {
+        guard let fileURL = coverImagesDirectory?.appendingPathComponent(bookID) else { return }
+        try? FileManager.default.removeItem(at: fileURL)
     }
 }

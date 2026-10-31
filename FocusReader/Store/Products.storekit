@@ -1,127 +1,539 @@
 {
+
   "appPolicies" : {
+
     "eula" : "",
+
     "policies" : [
+
       {
+
         "locale" : "en_US",
+
         "policyText" : "",
+
         "policyURL" : ""
+
       }
+
     ]
+
   },
+
   "identifier" : "945E40EA",
+
   "nonRenewingSubscriptions" : [
 
+
+
   ],
+
   "products" : [
+
     {
-      "displayPrice" : "1.99",
-      "familyShareable" : false,
-      "internalID" : "6757382647",
+
+      "displayPrice" : "0.99",
+
+      "familyShareable" : true,
+
+      "internalID" : "9012345673",
+
       "localizations" : [
+
         {
-          "description" : "Livres illimités, notes débloquées, sans pub",
-          "displayName" : "BookFocus Premium",
-          "locale" : "fr_CA"
-        },
-        {
-          "description" : "本を無制限追加、ノート解放、広告削除",
-          "displayName" : "BookFocus Premium",
-          "locale" : "ja"
-        },
-        {
-          "description" : "Add unlimited books, unlock notes, and remove all ads.",
-          "displayName" : "BookFocus Premium",
-          "locale" : "en_AU"
-        },
-        {
-          "description" : "新增無限本書，解鎖筆記，並移除所有廣告。",
-          "displayName" : "BookFocus Premium",
-          "locale" : "zh_Hant"
-        },
-        {
-          "description" : "Add unlimited books, unlock notes, and remove all ads.",
-          "displayName" : "BookFocus Premium",
-          "locale" : "en_CA"
-        },
-        {
-          "description" : "Thêm sách không giới hạn, mở khóa ghi chú",
-          "displayName" : "BookFocus Premium",
-          "locale" : "vi"
-        },
-        {
-          "description" : "Livres illimités, notes débloquées, sans pub",
-          "displayName" : "BookFocus Premium",
-          "locale" : "fr"
-        },
-        {
-          "description" : "Add unlimited books, unlock notes, and remove all ads.",
-          "displayName" : "BookFocus Premium",
-          "locale" : "en_GB"
-        },
-        {
-          "description" : "Add unlimited books, unlock notes, and remove all ads.",
-          "displayName" : "BookFocus Premium",
+
+          "description" : "Unlock the refreshing summer theme.",
+
+          "displayName" : "Summer Theme",
+
           "locale" : "en_US"
+
         },
+
         {
-          "description" : "Libros ilimitados, notas desbloqueadas, sin anuncios",
-          "displayName" : "BookFocus Premium",
-          "locale" : "es_ES"
-        },
-        {
-          "description" : "무제한 책 추가, 노트 해제, 광고 제거",
-          "displayName" : "BookFocus Premium",
+
+          "description" : "시원한 여름 테마를 영구적으로 잠금 해제합니다.",
+
+          "displayName" : "여름 테마",
+
           "locale" : "ko"
-        },
-        {
-          "description" : "เพิ่มหนังสือไม่จำกัด ปลดล็อกโน้ต ลบโฆษณา",
-          "displayName" : "BookFocus Premium",
-          "locale" : "th"
-        },
-        {
-          "description" : "Libros ilimitados, notas desbloqueadas, sin anuncios",
-          "displayName" : "BookFocus Premium",
-          "locale" : "es_MX"
-        },
-        {
-          "description" : "Tambah buku tanpa batas, buka catatan, hapus iklan",
-          "displayName" : "BookFocus Premium",
-          "locale" : "id"
-        },
-        {
-          "description" : "添加无限本书，解锁笔记，并移除所有广告。",
-          "displayName" : "BookFocus Premium",
-          "locale" : "zh_Hans"
+
         }
+
       ],
-      "productID" : "com.Jaemin.FocusReader.premium",
-      "referenceName" : "BookFocus Premium",
+
+      "productID" : "com.Jaemin.FocusReader.theme.summer",
+
+      "referenceName" : "Theme - Summer",
+
       "type" : "NonConsumable"
+
     }
+
   ],
+
   "settings" : {
+
     "_applicationInternalID" : "6756373612",
+
     "_askToBuyEnabled" : false,
+
     "_billingGracePeriodEnabled" : false,
+
     "_billingIssuesEnabled" : false,
+
     "_developerTeamID" : "DUBPMF36TD",
+
     "_disableDialogs" : false,
+
     "_failTransactionsEnabled" : false,
+
     "_lastSynchronizedDate" : 791953371.90187502,
+
     "_locale" : "en_US",
+
     "_renewalBillingIssuesEnabled" : false,
+
     "_storefront" : "USA",
+
     "_storeKitErrors" : [
 
+
+
     ],
+
     "_timeRate" : 0
+
   },
+
   "subscriptionGroups" : [
 
+    {
+
+      "id" : "21484501",
+
+      "localizations" : [
+
+
+
+      ],
+
+      "name" : "BookFocus Premium Subscriptions",
+
+      "subscriptions" : [
+
+        {
+
+          "adHocOffers" : [
+
+
+
+          ],
+
+          "codeOffers" : [
+
+
+
+          ],
+
+          "displayPrice" : "1.99",
+
+          "familyShareable" : false,
+
+          "groupNumber" : 1,
+
+          "internalID" : "6757382648",
+
+          "introductoryOffer" : {
+
+            "internalID" : "9012345671",
+
+            "numberOfPeriods" : 1,
+
+            "paymentMode" : "free",
+
+            "subscriptionPeriod" : "P3D"
+
+          },
+
+          "localizations" : [
+
+            {
+
+              "description" : "Livres illimités, notes débloquées, sans pub",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "fr_CA"
+
+            },
+
+            {
+
+              "description" : "本を無制限追加、ノート解放、広告削除",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "ja"
+
+            },
+
+            {
+
+              "description" : "Add unlimited books, unlock notes, and remove all ads.",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "en_AU"
+
+            },
+
+            {
+
+              "description" : "新增無限本書，解鎖筆記，並移除所有廣告。",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "zh_Hant"
+
+            },
+
+            {
+
+              "description" : "Add unlimited books, unlock notes, and remove all ads.",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "en_CA"
+
+            },
+
+            {
+
+              "description" : "Thêm sách không giới hạn, mở khóa ghi chú",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "vi"
+
+            },
+
+            {
+
+              "description" : "Livres illimités, notes débloquées, sans pub",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "fr"
+
+            },
+
+            {
+
+              "description" : "Add unlimited books, unlock notes, and remove all ads.",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "en_GB"
+
+            },
+
+            {
+
+              "description" : "Add unlimited books, unlock notes, and remove all ads.",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "en_US"
+
+            },
+
+            {
+
+              "description" : "Libros ilimitados, notas desbloqueadas, sin anuncios",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "es_ES"
+
+            },
+
+            {
+
+              "description" : "무제한 책 추가, 노트 해제, 광고 제거",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "ko"
+
+            },
+
+            {
+
+              "description" : "เพิ่มหนังสือไม่จำกัด ปลดล็อกโน้ต ลบโฆษณา",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "th"
+
+            },
+
+            {
+
+              "description" : "Libros ilimitados, notas desbloqueadas, sin anuncios",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "es_MX"
+
+            },
+
+            {
+
+              "description" : "Tambah buku tanpa batas, buka catatan, hapus iklan",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "id"
+
+            },
+
+            {
+
+              "description" : "添加无限本书，解锁笔记，并移除所有广告。",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "zh_Hans"
+
+            }
+
+          ],
+
+          "productID" : "com.Jaemin.FocusReader.premium.monthly",
+
+          "recurringSubscriptionPeriod" : "P1M",
+
+          "referenceName" : "BookFocus Premium (Monthly)",
+
+          "subscriptionGroupID" : "21484501",
+
+          "type" : "RecurringSubscription"
+
+        },
+
+        {
+
+          "adHocOffers" : [
+
+
+
+          ],
+
+          "codeOffers" : [
+
+
+
+          ],
+
+          "displayPrice" : "14.99",
+
+          "familyShareable" : false,
+
+          "groupNumber" : 1,
+
+          "internalID" : "6757382649",
+
+          "introductoryOffer" : {
+
+            "internalID" : "9012345672",
+
+            "numberOfPeriods" : 1,
+
+            "paymentMode" : "free",
+
+            "subscriptionPeriod" : "P3D"
+
+          },
+
+          "localizations" : [
+
+            {
+
+              "description" : "Livres illimités, notes débloquées, sans pub",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "fr_CA"
+
+            },
+
+            {
+
+              "description" : "本を無制限追加、ノート解放、広告削除",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "ja"
+
+            },
+
+            {
+
+              "description" : "Add unlimited books, unlock notes, and remove all ads.",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "en_AU"
+
+            },
+
+            {
+
+              "description" : "新增無限本書，解鎖筆記，並移除所有廣告。",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "zh_Hant"
+
+            },
+
+            {
+
+              "description" : "Add unlimited books, unlock notes, and remove all ads.",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "en_CA"
+
+            },
+
+            {
+
+              "description" : "Thêm sách không giới hạn, mở khóa ghi chú",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "vi"
+
+            },
+
+            {
+
+              "description" : "Livres illimités, notes débloquées, sans pub",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "fr"
+
+            },
+
+            {
+
+              "description" : "Add unlimited books, unlock notes, and remove all ads.",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "en_GB"
+
+            },
+
+            {
+
+              "description" : "Add unlimited books, unlock notes, and remove all ads.",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "en_US"
+
+            },
+
+            {
+
+              "description" : "Libros ilimitados, notas desbloqueadas, sin anuncios",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "es_ES"
+
+            },
+
+            {
+
+              "description" : "무제한 책 추가, 노트 해제, 광고 제거",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "ko"
+
+            },
+
+            {
+
+              "description" : "เพิ่มหนังสือไม่จำกัด ปลดล็อกโน้ต ลบโฆษณา",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "th"
+
+            },
+
+            {
+
+              "description" : "Libros ilimitados, notas desbloqueadas, sin anuncios",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "es_MX"
+
+            },
+
+            {
+
+              "description" : "Tambah buku tanpa batas, buka catatan, hapus iklan",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "id"
+
+            },
+
+            {
+
+              "description" : "添加无限本书，解锁笔记，并移除所有广告。",
+
+              "displayName" : "BookFocus Premium",
+
+              "locale" : "zh_Hans"
+
+            }
+
+          ],
+
+          "productID" : "com.Jaemin.FocusReader.premium.yearly",
+
+          "recurringSubscriptionPeriod" : "P1Y",
+
+          "referenceName" : "BookFocus Premium (Yearly)",
+
+          "subscriptionGroupID" : "21484501",
+
+          "type" : "RecurringSubscription"
+
+        }
+
+      ]
+
+    }
+
   ],
+
   "version" : {
+
     "major" : 4,
+
     "minor" : 0
+
   }
-}
+
+} 

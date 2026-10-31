@@ -1,0 +1,4 @@
+// Shared build settings for the FocusReader app target.
+// Secrets.xcconfig is intentionally local and excluded from source control.
+GOOGLE_BOOKS_API_KEY =
+#include? "Secrets.xcconfig"

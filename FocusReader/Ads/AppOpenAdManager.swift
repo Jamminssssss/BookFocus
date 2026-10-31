@@ -16,8 +16,10 @@ final class AppOpenAdManager: NSObject, ObservableObject, FullScreenContentDeleg
     // ⏱️ 유효 시간 (4시간)
     private let adValidityDuration: TimeInterval = 60 * 60 * 4
 
-    // ⏱️ 연속 표시 방지 쿨타임 (3시간) - 앱 종료 후에도 유지
-    private let minimumPresentInterval: TimeInterval = 60 * 60 * 3
+    // 운영에서는 과도한 노출을 막고, 테스트 환경에서는 반복 검증이 가능하게 한다.
+    private var minimumPresentInterval: TimeInterval {
+        AdConfiguration.usesTestAds ? 30 : 60 * 60 * 3
+    }
     
     // ✅ UserDefaults로 지속 저장
     private let lastPresentedTimeKey = "AppOpenAdLastPresentedTime"
@@ -44,6 +46,7 @@ final class AppOpenAdManager: NSObject, ObservableObject, FullScreenContentDeleg
 
     // MARK: - Load
     func loadAd() async {
+        await AdConfiguration.prepare()
         guard adControlManager.shouldShowAppOpenAds else {
             clearAdsAfterPurchase()
             return
@@ -55,7 +58,7 @@ final class AppOpenAdManager: NSObject, ObservableObject, FullScreenContentDeleg
 
         do {
             let ad = try await AppOpenAd.load(
-                with: "ca-app-pub-3940256099942544/5575463023", // ⚠️ 실 ID로 교체
+                with: AdConfiguration.appOpenAdUnitID,
                 request: Request()
             )
 

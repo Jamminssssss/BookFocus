@@ -1,12 +1,19 @@
-//
-//  Book.swift
-//  FocusReader
-//
-//  Created by JeaminPark on 12/10/25.
-//
-
 import Foundation
 import SwiftData
+
+// ⭐️ 포맷 구분을 위한 열거형
+enum BookFormat: String, Codable {
+    case physical = "physical"
+    case ebook = "ebook"
+}
+
+// ⭐️ 도서관 대출 상태 구분을 위한 열거형
+public enum LoanStatus: String, Codable, CaseIterable {
+    case none = "none"
+    case borrowed = "borrowed"
+    case returned = "returned"
+    case renewed = "renewed"
+}
 
 @Model
 final class Book {
@@ -15,24 +22,42 @@ final class Book {
     var author: String = ""
     var totalPages: Int = 0
     var currentPage: Int = 0
+    var formatRawValue: String = BookFormat.physical.rawValue
+    var loanStatusRawValue: String = LoanStatus.none.rawValue // ⭐️ 추가: 대출 상태
     var coverImageData: Data?
     var isCompleted: Bool = false
     var totalReadingTime: TimeInterval = 0
     var createdAt: Date = Date()
     var lastUpdated: Date = Date()
-    var sessions: [ReadingSession]? = []
     
-    var memos: [PageMemo]? = []  // 🔥 Changed from [Memo] to [PageMemo]
+    // 🔥 책 삭제 시 하위 세션/메모도 함께 삭제
+    @Relationship(deleteRule: .cascade) var sessions: [ReadingSession]? = []
+    @Relationship(deleteRule: .cascade) var memos: [PageMemo]? = []
     
-    // 대출/반납 날짜
     var checkoutDate: Date? = nil
     var dueDate: Date? = nil
     
-    init(title: String, author: String, totalPages: Int, coverImageData: Data? = nil, checkoutDate: Date? = nil, dueDate: Date? = nil) {
+    // 연산 프로퍼티로 쉽게 포맷 접근
+    var format: BookFormat {
+        get { BookFormat(rawValue: formatRawValue) ?? .physical }
+        set { formatRawValue = newValue.rawValue }
+    }
+    
+    var isEbook: Bool { format == .ebook }
+    
+    // ⭐️ 연산 프로퍼티로 쉽게 대출 상태 접근
+    var loanStatus: LoanStatus {
+        get { LoanStatus(rawValue: loanStatusRawValue) ?? .none }
+        set { loanStatusRawValue = newValue.rawValue }
+    }
+    
+    init(title: String, author: String, totalPages: Int, format: BookFormat = .physical, coverImageData: Data? = nil, checkoutDate: Date? = nil, dueDate: Date? = nil) {
         self.id = UUID()
         self.title = title
         self.author = author
-        self.totalPages = totalPages
+        self.formatRawValue = format.rawValue
+        self.loanStatusRawValue = (checkoutDate != nil || dueDate != nil) ? LoanStatus.borrowed.rawValue : LoanStatus.none.rawValue
+        self.totalPages = format == .ebook ? 100 : totalPages // ⭐️ 전자책이면 100%로 고정
         self.currentPage = 0
         self.coverImageData = coverImageData
         self.isCompleted = false
@@ -43,112 +68,103 @@ final class Book {
         self.dueDate = dueDate
     }
     
-    // 누적 읽기 시간 계산 (세션들의 합계)
     func updateTotalReadingTime() {
         guard let sessions = sessions, !sessions.isEmpty else {
             self.totalReadingTime = 0
             self.lastUpdated = Date()
             return
         }
-        
         self.totalReadingTime = sessions.reduce(0) { $0 + $1.duration }
         self.lastUpdated = Date()
     }
     
-    // 완독 체크 (현재 페이지가 총 페이지 이상인지)
     func checkCompletion() {
         self.isCompleted = self.currentPage >= self.totalPages
         self.lastUpdated = Date()
     }
     
-    // 페이지 업데이트
     func updateCurrentPage(_ page: Int) {
         self.currentPage = min(max(0, page), self.totalPages)
         self.lastUpdated = Date()
         checkCompletion()
     }
+
+    /// Records a bookmark without manufacturing a reading session or duration.
+    /// Earlier positions are allowed so an accidental entry can be corrected.
+    func saveReadingProgress(_ page: Int, in context: ModelContext) throws {
+        guard page >= 0, page <= totalPages else { throw ProgressError.invalidPage }
+        let previousPage = currentPage
+        let previousCompletion = isCompleted
+        let previousUpdate = lastUpdated
+        updateCurrentPage(page)
+        do {
+            try context.save()
+        } catch {
+            currentPage = previousPage
+            isCompleted = previousCompletion
+            lastUpdated = previousUpdate
+            throw error
+        }
+    }
+
+    enum ProgressError: Error {
+        case invalidPage
+    }
     
-    // 책 정보 업데이트
-    func updateInfo(title: String? = nil, author: String? = nil, totalPages: Int? = nil, coverImageData: Data? = nil, checkoutDate: Date? = nil, dueDate: Date? = nil) {
-        if let title = title {
-            self.title = title
+    func updateInfo(title: String? = nil, author: String? = nil, totalPages: Int? = nil, format: BookFormat? = nil, coverImageData: Data? = nil, checkoutDate: Date? = nil, dueDate: Date? = nil) {
+        if let title = title { self.title = title }
+        if let author = author { self.author = author }
+        if let format = format {
+            self.format = format
+            if format == .ebook { self.totalPages = 100 }
         }
-        if let author = author {
-            self.author = author
-        }
-        if let totalPages = totalPages {
-            self.totalPages = totalPages
-        }
-        if let coverImageData = coverImageData {
-            self.coverImageData = coverImageData
-        }
-        if let checkoutDate = checkoutDate {
-            self.checkoutDate = checkoutDate
-        }
-        if let dueDate = dueDate {
-            self.dueDate = dueDate
-        }
+        if let totalPages = totalPages, !self.isEbook { self.totalPages = totalPages }
+        if let coverImageData = coverImageData { self.coverImageData = coverImageData }
+        if let checkoutDate = checkoutDate { self.checkoutDate = checkoutDate }
+        if let dueDate = dueDate { self.dueDate = dueDate }
+        
         self.lastUpdated = Date()
         checkCompletion()
     }
     
-    // 세션 추가 헬퍼 메서드
     func addSession(_ session: ReadingSession) {
-        if sessions == nil {
-            sessions = []
-        }
+        if sessions == nil { sessions = [] }
         session.book = self
         sessions?.append(session)
         updateTotalReadingTime()
     }
     
-    // 세션 제거 헬퍼 메서드
     func removeSession(_ session: ReadingSession) {
         sessions?.removeAll { $0.id == session.id }
         updateTotalReadingTime()
     }
     
-    // 🔥 Added: 메모 추가 헬퍼 메서드
     func addMemo(_ memo: PageMemo) {
-        if memos == nil {
-            memos = []
-        }
+        if memos == nil { memos = [] }
         memo.book = self
         memos?.append(memo)
         self.lastUpdated = Date()
     }
     
-    // 🔥 Added: 메모 제거 헬퍼 메서드
     func removeMemo(_ memo: PageMemo) {
         memos?.removeAll { $0.id == memo.id }
         self.lastUpdated = Date()
     }
 }
 
-// 편의 확장
 extension Book {
     var calculatedTotalReadingTime: TimeInterval {
         return sessions?.reduce(0) { $0 + $1.duration } ?? 0
     }
     
-    var sessionCount: Int {
-        return sessions?.count ?? 0
-    }
-    
-    var memoCount: Int {
-        return memos?.count ?? 0
-    }
+    var sessionCount: Int { return sessions?.count ?? 0 }
+    var memoCount: Int { return memos?.count ?? 0 }
     
     var formattedReadingTime: String {
         let totalSeconds = calculatedTotalReadingTime
         let hours = Int(totalSeconds / 3600)
         let minutes = Int((totalSeconds.truncatingRemainder(dividingBy: 3600)) / 60)
-        
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        } else {
-            return "\(minutes)m"
-        }
+        return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
     }
     
     var progressPercentage: Double {
@@ -162,22 +178,13 @@ extension Book {
         return Double(currentPage) / totalHours
     }
     
-    // MARK: - Due date helpers
-    var hasDueDate: Bool {
-        return dueDate != nil
-    }
+    var hasDueDate: Bool { return dueDate != nil }
 
     func nineAMLocal(on date: Date) -> Date {
-        var cal = Calendar.current
-        cal.timeZone = .current
+        var cal = Calendar.current; cal.timeZone = .current
         let comps = cal.dateComponents([.year, .month, .day], from: date)
         var nine = DateComponents()
-        nine.year = comps.year
-        nine.month = comps.month
-        nine.day = comps.day
-        nine.hour = 9
-        nine.minute = 0
-        nine.second = 0
+        nine.year = comps.year; nine.month = comps.month; nine.day = comps.day; nine.hour = 9; nine.minute = 0; nine.second = 0
         return cal.date(from: nine) ?? date
     }
 
@@ -200,12 +207,7 @@ extension Book {
     }
 
     var dueReminderPayload: DueReminderPayload? {
-        guard let _ = dueDate else { return nil }
-        return DueReminderPayload(
-            id: id.uuidString,
-            title: title,
-            dueMinus1DayAtNine: dueMinus1DayAtNine,
-            dueDayAtNine: dueDayAtNine
-        )
+        guard dueDate != nil else { return nil }
+        return DueReminderPayload(id: id.uuidString, title: title, dueMinus1DayAtNine: dueMinus1DayAtNine, dueDayAtNine: dueDayAtNine)
     }
 }

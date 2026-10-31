@@ -1,7 +1,7 @@
 import ActivityKit
 import Foundation
 
-struct ReadingTimerAttributes: ActivityAttributes {
+nonisolated struct ReadingTimerAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         var timerStartDate: Date?
         var pausedTime: TimeInterval
@@ -11,6 +11,7 @@ struct ReadingTimerAttributes: ActivityAttributes {
         var timerEndDate: Date?
         var currentPage: Int
         var totalPages: Int
+        var format: String? = nil
     }
     
     var bookTitle: String

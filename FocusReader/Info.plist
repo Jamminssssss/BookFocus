@@ -2,8 +2,29 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.Jaemin.FocusReader</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>focusreader</string>
+			</array>
+		</dict>
+	</array>
+	<key>GADAppOpenAdUnitID</key>
+	<string>$(GAD_APP_OPEN_AD_UNIT_ID)</string>
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~3347511713</string>
+	<string>$(GAD_APPLICATION_ID)</string>
+	<key>GADBottomBannerAdUnitID</key>
+	<string>$(GAD_BOTTOM_BANNER_AD_UNIT_ID)</string>
+	<key>GADTopBannerAdUnitID</key>
+	<string>$(GAD_TOP_BANNER_AD_UNIT_ID)</string>
+	<key>GoogleBooksAPIKey</key>
+	<string>$(GOOGLE_BOOKS_API_KEY)</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
@@ -203,34 +224,14 @@
 			<string>3qcr597p9d.skadnetwork</string>
 		</dict>
 	</array>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
-	</array>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
-	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
-	<true/>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<key>CFBundleDisplayName</key>
-	<string>BookFocus</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>com.Jaemin.FocusReader</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>focusreader</string>
-			</array>
-		</dict>
 	</array>
 	<key>UISupportedInterfaceOrientations_iPad</key>
 	<array>
@@ -239,14 +240,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>FocusReader needs access to your photo library to let you choose and add book cover images.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>FocusReader needs access to your camera to take photos of book covers.</string>
-	<key>UIApplicationSceneManifest</key>
-	<dict>
-		<key>UIApplicationSupportsMultipleScenes</key>
-		<false/>
-	</dict>
 </dict>
 </plist>
